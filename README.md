@@ -4,6 +4,28 @@
 
 本项目目标不是简单预测“房价应该是多少”，而是建立一个可以根据历史订房、价格、库存和市场信号，推荐酒店房间价格的定价引擎。推荐结果应服务于收益最大化，同时兼顾入住率、取消风险、渠道差异和人工可解释性。
 
+## 当前状态
+
+项目已经从纯需求定义推进到 **Streamlit MVP 原型**：
+
+- 可以加载酒店订单、库存和当前价格 CSV
+- 可以自动生成 demo 数据
+- 可以计算 Occupancy、ADR、RevPAR 等核心指标
+- 可以生成未来日期的规则型调价建议
+- 可以导出 Excel 调价建议报表
+- 可以转换 Kaggle Hotel Booking Demand 数据集为 MVP 格式
+
+## 快速启动
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+streamlit run app/streamlit_app.py
+```
+
+默认情况下，App 会使用内置 demo 数据。也可以在侧边栏关闭 demo 模式，上传自己的 CSV。
+
 ## 问题定义
 
 酒店定价不是单一预测问题，而是一个收益管理问题：
@@ -43,6 +65,24 @@
 
 `RevPAR` 是第一阶段最重要的优化参考指标，因为它同时考虑价格和入住率。
 
+## Kaggle 数据转换
+
+下载 Kaggle Hotel Booking Demand 的 `hotel_bookings.csv` 后，可以转换成 MVP 所需格式：
+
+```bash
+mkdir -p data/raw
+# 把 hotel_bookings.csv 放到 data/raw/ 目录
+python scripts/create_demo_data.py --source data/raw/hotel_bookings.csv --output-dir sample_data --hotel "City Hotel"
+```
+
+转换后会生成：
+
+- `sample_data/bookings.csv`
+- `sample_data/inventory.csv`
+- `sample_data/current_prices.csv`
+
+说明：Kaggle 数据有订单和 ADR，但没有真实库存快照和当前挂牌价快照，所以 adapter 会生成演示用库存和当前价格。真实客户场景下，应替换为 PMS、Channel Manager 或 Excel 导出的真实文件。
+
 ## 文档结构
 
 - [CONTEXT.md](CONTEXT.md): 项目上下文、术语和协作规则
@@ -51,7 +91,11 @@
 - [docs/modeling-approach.md](docs/modeling-approach.md): 建模路线与优化思路
 - [docs/roadmap.md](docs/roadmap.md): 阶段计划
 - [docs/open-questions.md](docs/open-questions.md): 待确认问题
+- [docs/mvp-implementation.md](docs/mvp-implementation.md): MVP 运行和实现说明
 
-## 当前状态
+## 商业化方向
 
-项目处于需求定义阶段。下一步是确认是否有真实酒店数据，以及第一版应面向单酒店、单城市多酒店，还是模拟数据原型。
+优先验证两个方向：
+
+1. **一次性部署 / 咨询版**：为中小酒店或民宿部署轻量收益管理助手。
+2. **教学 / 实训工具版**：用于酒店管理与数字化运营课程，学生上传或使用模拟数据完成收益管理实训。
