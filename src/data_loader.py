@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from .sample_data import build_demo_data
+
 
 DATE_COLUMNS = {
     "bookings": ["booking_date", "check_in_date", "check_out_date", "cancelled_at"],
@@ -34,9 +36,18 @@ def load_hotel_data(bookings_source, inventory_source, current_prices_source) ->
 
 
 def load_demo_data(base_dir="sample_data") -> HotelData:
+    """Load CSV demo data if present; otherwise generate deterministic demo data."""
     base = Path(base_dir)
-    return load_hotel_data(
-        base / "bookings.csv",
-        base / "inventory.csv",
-        base / "current_prices.csv",
+    bookings_path = base / "bookings.csv"
+    inventory_path = base / "inventory.csv"
+    current_prices_path = base / "current_prices.csv"
+
+    if bookings_path.exists() and inventory_path.exists() and current_prices_path.exists():
+        return load_hotel_data(bookings_path, inventory_path, current_prices_path)
+
+    bookings, inventory, current_prices = build_demo_data()
+    return HotelData(
+        bookings=_parse_dates(bookings, "bookings"),
+        inventory=_parse_dates(inventory, "inventory"),
+        current_prices=_parse_dates(current_prices, "current_prices"),
     )
