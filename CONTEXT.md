@@ -1,10 +1,11 @@
 ---
 project: hotel-pricing-engine
-status: planning
+status: mvp-running
 owner: zengtao227
 language: zh-CN
 primary_goal: 酒店房间动态定价与收益优化
 created_at: 2026-06-08
+updated_at: 2026-06-08
 ---
 
 # Project Context
@@ -26,9 +27,17 @@ created_at: 2026-06-08
 - `取消率`: 已确认订单后续取消的比例
 - `推荐价`: 系统建议人工审核的价格
 
+## 当前状态（2026-06-08）
+
+MVP 已可运行。Streamlit 应用部署在 Frankfurt VPS，通过 Caddy 反代提供 HTTPS 访问。
+详细部署说明见 `docs/deployment.md`。
+
+访问地址：`https://frank-hotel.mooo.com`（需先完成 DNS 配置）
+认证：HTTP Basic Auth，账号 `admin`
+
 ## 当前目标
 
-先建立清晰的需求、数据口径和建模路线，再决定技术实现。第一版应是“辅助人工调价”的决策支持系统，而不是自动改价系统。
+先建立清晰的需求、数据口径和建模路线，再决定技术实现。第一版应是”辅助人工调价”的决策支持系统，而不是自动改价系统。
 
 ## 产品原则
 
