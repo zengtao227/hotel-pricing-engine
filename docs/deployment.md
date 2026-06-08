@@ -5,7 +5,7 @@
 - **服务器**：Frankfurt VPS（89.168.80.38，Oracle Cloud ARM A1）
 - **项目路径**：`/data/projects/hotel-pricing-engine`
 - **访问地址**：`https://frank-hotel.mooo.com`（需完成 DNS 配置，见下文）
-- **认证**：HTTP Basic Auth，账号 `admin`，密码 `hotel2026`
+- **认证**：HTTP Basic Auth，账号 `admin`，密码见私密渠道（不存 GitHub）
 
 ## 启动 Streamlit
 
@@ -40,10 +40,11 @@ frank-hotel.mooo.com {
 
 修改密码：
 ```bash
-caddy hash-password --plaintext 新密码
-# 将输出的哈希替换 Caddyfile 中的旧哈希
+caddy hash-password --plaintext <新密码>
+# 将输出的哈希替换 /etc/caddy/Caddyfile 中的旧哈希
 sudo systemctl reload caddy
 ```
+> 密码本身不要写进文档或提交到 GitHub。
 
 ---
 
