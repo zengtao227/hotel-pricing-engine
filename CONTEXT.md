@@ -32,7 +32,8 @@ updated_at: 2026-06-08
 MVP 已可运行。Streamlit 应用部署在 Frankfurt VPS，通过 Caddy 反代提供 HTTPS 访问。
 详细部署说明见 `docs/deployment.md`。
 
-访问地址：`https://frank-hotel.mooo.com`（需先完成 DNS 配置）
+访问地址：`https://hotel.zengsg.dpdns.org`（DNS 传播中，预计 1–24 小时内生效）
+域名：zengsg.dpdns.org（DigitalPlat，有效期至 2027-06-08，Cloudflare 托管）
 认证：HTTP Basic Auth，账号 `admin`
 
 ## 当前目标

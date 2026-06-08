@@ -4,7 +4,7 @@
 
 - **服务器**：Frankfurt VPS（89.168.80.38，Oracle Cloud ARM A1）
 - **项目路径**：`/data/projects/hotel-pricing-engine`
-- **访问地址**：`https://frank-hotel.mooo.com`（需完成 DNS 配置，见下文）
+- **访问地址**：`https://hotel.zengsg.dpdns.org`（DNS 传播中，预计 1–24 小时内生效）
 - **认证**：HTTP Basic Auth，账号 `admin`，密码见私密渠道（不存 GitHub）
 
 ## 启动 Streamlit
@@ -19,23 +19,53 @@ nohup python3 -m streamlit run app/streamlit_app.py \
 
 查看日志：`tail -f /tmp/hotel-pricing.log`
 
-## DNS 配置（首次部署需操作）
+## 域名与 DNS 配置
 
-`frank-hotel.mooo.com` 需要在 changeip.com / mooo.com 控制台手动添加，指向 89.168.80.38。
+### 域名信息
 
-配置好 DNS 后，Caddy 会自动申请 HTTPS 证书（Let's Encrypt），无需手动操作。
+| 项目 | 内容 |
+|------|------|
+| 主域名 | `zengsg.dpdns.org` |
+| 注册商 | DigitalPlat FreeDomain |
+| 有效期 | 2027 年 6 月 8 日 |
+| DNS 托管 | Cloudflare |
+| NS 记录 | andronicus.ns.cloudflare.com / gail.ns.cloudflare.com |
+
+### 已规划子域名
+
+在 Cloudflare DNS 面板添加 A 记录，指向 89.168.80.38：
+
+| 子域名 | 用途 | 状态 |
+|--------|------|------|
+| `hotel.zengsg.dpdns.org` | 酒店定价 MVP | 待添加 A 记录 |
+
+> 其他项目子域名（如 `panel.zengsg.dpdns.org`、`audit.zengsg.dpdns.org`）可按需在 Cloudflare 添加，不需要重新注册域名。
+
+### 在 Cloudflare 添加 A 记录步骤
+
+1. 登录 Cloudflare → 选择 `zengsg.dpdns.org`
+2. DNS → Records → Add record
+3. Type: A，Name: `hotel`，IPv4: `89.168.80.38`，Proxy: 建议开启（橙色云朵）
+4. 保存
 
 ## Caddy 配置
 
 配置文件：`/etc/caddy/Caddyfile`
 
+当前 hotel 条目（域名待更新为 `hotel.zengsg.dpdns.org`）：
+
 ```
-frank-hotel.mooo.com {
+hotel.zengsg.dpdns.org {
     basic_auth {
-        admin $2a$14$tRsftEhi4qOCg4AeKZpGI.fJ2klpzVHrwSC/guFhyHXnNOsDcYl3.
+        admin <bcrypt-hash>
     }
     reverse_proxy localhost:8501
 }
+```
+
+更新 Caddyfile 域名后执行：
+```bash
+sudo systemctl reload caddy
 ```
 
 修改密码：
@@ -79,8 +109,9 @@ sudo systemctl reload caddy
 
 ## 下一步计划
 
-1. 配置 DNS（frank-hotel.mooo.com → 89.168.80.38）
-2. 验证 HTTPS 访问正常
-3. 用 Demo 数据完成第一次完整演示验证
-4. 确认是否有真实酒店数据可接入，或继续使用模拟数据
-5. 如需向中国客户演示，评估是否迁移到 Tokyo VPS 或国内服务器
+1. 在 Cloudflare 添加 A 记录（hotel.zengsg.dpdns.org → 89.168.80.38）
+2. 更新 Caddyfile 中的域名为 `hotel.zengsg.dpdns.org`，reload Caddy
+3. 等待 DNS 传播（1–24 小时），验证 HTTPS 访问正常
+4. 用 Demo 数据完成第一次完整演示验证
+5. 确认是否有真实酒店数据可接入，或继续使用模拟数据
+6. 如需向中国客户演示，评估是否迁移到 Tokyo VPS 或国内服务器
