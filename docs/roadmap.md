@@ -144,24 +144,103 @@
 
 ## Phase 5: 自动价格监控与真实业务集成
 
-目标：接入真实数据源，并把“每天人工打开系统查看”升级为“自动检查、自动计算、按风险等级进入审批或发布”。
+目标：接入真实数据源，并把”每天人工打开系统查看”升级为”自动检查、自动计算、按风险等级进入审批或发布”。
+
+### Phase 5A：SFTP 定时同步（方案 B，第一家试用酒店落地）
+
+这是起步路径，无需 PMS API 权限，只需酒店 IT 配合一次性设置。
+
+**数据流**：
+
+```
+酒店 PMS（每天凌晨导出 CSV）
+    ↓ SFTP/FTP 推送 或 脚本拉取
+VPS /data/hotel_imports/{hotel_id}/YYYY-MM-DD/
+    bookings_delta.csv      ← 当日新增/变更订单
+    inventory_snapshot.csv  ← 当前库存快照
+    current_prices.csv      ← 当前挂牌价
+    ↓ systemd timer（每天 06:00 触发）
+定价引擎重算推荐价 → 写入缓存
+    ↓ 经理早 8 点打开手机看到当天数据
+```
+
+**需要开发的组件**：
+
+1. `scripts/import_hotel_data.py`：检测 `/data/hotel_imports/` 新文件到达，合并到主数据集，记录导入日志
+2. `scripts/validate_import.py`：字段映射检查（必填字段、日期格式、价格合理范围），异常自动报警
+3. systemd timer 配置：每天 06:00 触发导入 + 重算
+4. 酒店对接文档：给酒店 IT 的 CSV 字段规范（见 `docs/data-requirements.md`）
+5. 导入日志页面：在 Streamlit 中展示最近一次导入状态、导入行数、异常记录
+
+**字段映射原则**：
+
+PMS 导出字段名各家不同，需要为每家酒店维护一个映射配置文件 `hotel_config/{hotel_id}/field_mapping.yaml`，在导入时做字段重命名，不改动引擎核心。
+
+**完成标准**：
+
+- 酒店 IT 配置一次后，每天数据自动更新，无需人工干预
+- 导入失败有日志，经理手机可以看到最近导入状态
+- 数据质量检查覆盖：缺失字段、日期格式、价格为零、重复库存行
+
+---
+
+### Phase 5B：PMS API 直连（方案 C，多酒店规模化阶段）
+
+前置条件：至少 2 家酒店稳定使用，SFTP 方案已验证数据口径。
+
+**目标**：用 PMS 官方 API 替代 SFTP 手工导出，实现准实时数据更新（5~30 分钟）。
+
+**技术路径**：
+
+```
+PMS API（Webhook 推送 或 定时拉取）
+    ↓
+hotel_adapter/{pms_type}/connector.py  ← 每个 PMS 一个 adapter
+    ↓ 标准化为内部三张表
+src/data_loader.py（不变）
+    ↓
+定价引擎（不变）
+```
+
+**需要开发的组件**：
+
+1. `hotel_adapter/` 目录结构：每个 PMS 类型独立 adapter（cloudbeds / opera_cloud / mews / seisoft 等）
+2. `hotel_adapter/base.py`：抽象基类，定义 `pull_bookings()` / `pull_inventory()` / `pull_prices()` 接口
+3. Webhook 接收端：接收 PMS 推送的实时订单变更事件
+4. 增量合并逻辑：只处理变更数据，不每次全量重载
+5. 认证管理：每家酒店的 API Key / OAuth Token 安全存储（不放代码仓库）
+
+**优先对接顺序**（按国内外市场决定）：
+
+- 国内试用：西软 / 中软云 / 飞象科技（询问试用酒店在用哪家）
+- 国际演示：Cloudbeds（有完整 REST API 文档，适合 MVP 对接）
+- 大型连锁：Opera Cloud（需要 Oracle 认证合作伙伴关系）
+
+**完成标准**：
+
+- 数据延迟 ≤ 30 分钟
+- 单 adapter 出错不影响其他酒店
+- 新 PMS 接入只需实现 adapter 接口，引擎核心零改动
+- API 认证凭证加密存储，不进 Git
+
+---
 
 推荐顺序：
 
-1. 真实数据导入和数据质量报告
-2. 真实房态连接：优先接入 PMS、Channel Manager、门店 Excel 或前台房态表的只读数据源
-3. 自动价格监控任务：定时读取最新订单、库存、当前价
-4. 自动重新计算推荐价，但默认不自动发布
-5. 渠道价 CSV / Channel Manager 导入模板
-6. 接入一个真实 PMS 或 Channel Manager API 的只读导入
-7. 手机端或手机 APP：让酒店经理随时查看销售看板并审批价格
-8. 半自动发布
-9. 抽象多系统 adapter
+1. 真实数据导入和数据质量报告（5A 第一步）
+2. SFTP 定时同步落地（5A 完整）
+3. 审批日志升级为 SQLite / Postgres
+4. PMS API 直连第一个 adapter（5B 启动）
+5. 渠道价 CSV 导出给 Channel Manager
+6. 多 PMS adapter 抽象（5B 完整）
+7. 半自动发布护栏
 
 可能交付物：
 
-- PMS 或 OTA 数据导入
+- PMS 或 OTA 数据导入（SFTP + API 两种路径）
 - 真实房态、库存和当前价自动同步
+- 字段映射配置文件（每酒店一份）
+- 导入日志与数据质量报告
 - 竞品价格采集
 - 多渠道价格策略
 - 自动监控任务运行日志
@@ -203,11 +282,17 @@
 
 ## 当前最高优先级
 
-1. 增强真实数据导入和数据质量报告。
-2. 在审批页面增加 Channel Pricing Rules 渠道价预览和导出。
-3. 接入真实房态、库存和当前价格来源，让销售看板具备及时性。
-4. 增加自动价格监控任务：定时检查新订单、库存和当前价格，并自动重新计算建议。
-5. 设计手机端 / 手机 APP 的销售看板和价格审批流程。
-6. 把审批日志从 CSV 升级为 SQLite。
-7. 增加取消风险调整、节假日和活动日因子。
-8. 为长期公网访问补充基础认证或访问保护。
+**已完成**：
+- 手机端响应式布局（CSS media query，指标卡 2×2 折叠，图表自适应宽度）
+- 审批页卡片视图（📱 卡片视图 / 🖥️ 表格视图切换，经理可在手机上一键批准/拒绝）
+
+**下一步（按优先级）**：
+
+1. **确认第一家试用酒店使用的 PMS**，获取一份真实导出的报表样本，完成字段映射。
+2. **开发 `scripts/import_hotel_data.py`**：SFTP 接收 + 字段映射 + 数据质量检查 + 导入日志（Phase 5A）。
+3. **systemd timer 配置**：每天 06:00 自动触发导入和重算，经理早上打开手机即看到最新数据。
+4. **审批日志从 CSV 升级为 SQLite**：支持多酒店并发写入，查询更快。
+5. 增加取消风险调整、节假日和活动日因子。
+6. 把 Channel Pricing Rules 渠道价导出为 Channel Manager 上传模板。
+7. 为长期公网访问补充基础认证（HTTP Basic Auth 或邀请码）。
+8. **Phase 5B（多酒店阶段）**：开发 PMS API adapter 抽象层，第一个对接目标根据试用酒店的 PMS 决定。
