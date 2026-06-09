@@ -103,6 +103,7 @@ python scripts/create_demo_data.py --source data/raw/hotel_bookings.csv --output
 - [docs/demo-presentation-script.md](docs/demo-presentation-script.md): 演示文稿文稿，后续生成 HTML / PPT 优先使用
 - [docs/revenue-optimization-model.md](docs/revenue-optimization-model.md): 收益最大化定价模型、剩余库存定价、渠道价和数学基础
 - [docs/ota-channel-pricing-notes.md](docs/ota-channel-pricing-notes.md): OTA 折扣、佣金、渠道价和价格更新频率说明
+- [docs/channel-pricing-rules.md](docs/channel-pricing-rules.md): Channel Pricing Rules 字段、公式、示例和 UI 设计
 - [docs/automated-pricing-monitoring.md](docs/automated-pricing-monitoring.md): 自动价格监控、自动计算和自动发布护栏设计
 - [docs/requirements.md](docs/requirements.md): 产品需求与 MVP 验收标准
 - [docs/data-requirements.md](docs/data-requirements.md): 数据字段、口径和质量要求
