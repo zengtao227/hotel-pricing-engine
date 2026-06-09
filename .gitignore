@@ -8,3 +8,9 @@ data/raw/
 data/processed/
 data/audit_logs/*.csv
 *.xlsx
+
+# Generated presentation workspaces stay outside GitHub.
+Decks/
+PPTX/
+*.ppt
+*.pptx

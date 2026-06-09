@@ -43,6 +43,12 @@ CHANNEL_TEXT = {
         "de": "Kanalpreiszeilen mit Freigabepflicht",
         "fr": "Lignes nécessitant validation",
     },
+    "missing_columns": {
+        "zh": "审批表缺少生成渠道价所需字段，暂时无法预览渠道价。",
+        "en": "The approval table is missing required fields for channel price preview.",
+        "de": "Der Freigabetabelle fehlen Pflichtfelder für die Kanalpreisvorschau.",
+        "fr": "Le tableau de validation ne contient pas les champs requis pour les prix par canal.",
+    },
 }
 
 
@@ -89,6 +95,11 @@ def _styled_preview(channel_prices: pd.DataFrame, lang: str):
 def render_channel_price_preview(approval_table: pd.DataFrame, lang: str) -> None:
     st.subheader(_label("title", lang))
     st.info(_label("policy", lang))
+
+    required_columns = {"approval_status", "selected"}
+    if not required_columns.issubset(approval_table.columns):
+        st.warning(_label("missing_columns", lang))
+        return
 
     approved = approval_table[
         (approval_table["approval_status"] == "approved")

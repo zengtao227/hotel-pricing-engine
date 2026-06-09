@@ -25,6 +25,7 @@ from src.approval_workflow import (
 )
 from src.audit_log_store import append_audit_log, load_audit_log
 from src.backtesting import bt_label, render_backtesting
+from src.channel_pricing_ui import render_channel_price_preview
 from src.data_loader import HotelData, load_demo_data, load_hotel_data
 from src.hotel_config import (
     apply_config_to_current_prices,
@@ -139,6 +140,15 @@ def _expected_recommendation_rows(current_prices: pd.DataFrame, observation_date
 
 
 def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame, overview: dict, lang: str) -> None:
+    st.markdown(
+        """
+        <style>
+        [data-testid="stMetricValue"] { color: #0f766e; font-weight: 700; }
+        [data-testid="stMetricDelta"] { font-weight: 600; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     st.subheader(t("sales_dashboard", lang))
     st.write(t("summary_text", lang))
     render_interpretation_expander(lang)
@@ -243,6 +253,7 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
 
     st.caption(alabel("preview_caption", lang))
     st.dataframe(styled_preview(st.session_state.approval_table, lang), width="stretch", hide_index=True)
+    render_channel_price_preview(st.session_state.approval_table, lang)
 
     if st.button(alabel("simulate_push", lang), type="primary", width="stretch"):
         pushed_table, log_rows = simulate_push(st.session_state.approval_table, lang)
@@ -371,12 +382,12 @@ if missing_recommendation_rows > 0:
 
 overview = summarize_overview(metrics)
 
-tab_dashboard, tab_recommendations, tab_backtesting, tab_approval, tab_config, tab_data = st.tabs(
+tab_dashboard, tab_recommendations, tab_approval, tab_backtesting, tab_config, tab_data = st.tabs(
     [
         t("sales_dashboard", lang),
         t("recommendations", lang),
-        bt_label("tab", lang),
         alabel("tab", lang),
+        bt_label("tab", lang),
         hotel_config_label("tab", lang),
         t("data_preview", lang),
     ]
