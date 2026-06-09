@@ -6,4 +6,5 @@ venv/
 .DS_Store
 data/raw/
 data/processed/
+data/audit_logs/*.csv
 *.xlsx
