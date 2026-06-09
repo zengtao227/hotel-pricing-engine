@@ -50,6 +50,26 @@ PUSH_STATUS = {"not_pushed": {"zh": "未推送", "en": "Not published", "de": "N
 BOOL_LABEL = {True: {"zh": "是", "en": "Yes", "de": "Ja", "fr": "Oui"}, False: {"zh": "否", "en": "No", "de": "Nein", "fr": "Non"}}
 DISPLAY_COLUMNS = ["selected", "stay_date", "hotel_id", "room_type", "current_price", "recommended_price", "approved_price", "action", "confidence", "manual_override", "approval_status", "review_comment", "push_status", "pushed_at"]
 
+_CARD = {
+    "approve_btn": {"zh": "批准", "en": "Approve", "de": "Freigeben", "fr": "Valider"},
+    "reject_btn": {"zh": "拒绝", "en": "Reject", "de": "Ablehnen", "fr": "Rejeter"},
+    "pending_count": {"zh": "待处理", "en": "Pending", "de": "Ausstehend", "fr": "En attente"},
+    "approved_count": {"zh": "已批准", "en": "Approved", "de": "Freigegeben", "fr": "Validé"},
+    "rejected_count": {"zh": "已拒绝", "en": "Rejected", "de": "Abgelehnt", "fr": "Rejeté"},
+    "hold_note": {
+        "zh": "维持原价项目已自动标记为批准，无需额外操作。",
+        "en": "Hold items are pre-approved and require no action.",
+        "de": "Halten-Einträge sind vorab freigegeben.",
+        "fr": "Les éléments 'hold' sont pré-approuvés.",
+    },
+    "already_pushed": {"zh": "已推送 ✔", "en": "Already published ✔", "de": "Bereits veröffentlicht ✔", "fr": "Déjà publié ✔"},
+    "view_card": {"zh": "📱 卡片视图", "en": "📱 Card View", "de": "📱 Kartenansicht", "fr": "📱 Vue cartes"},
+    "view_table": {"zh": "🖥️ 表格视图", "en": "🖥️ Table View", "de": "🖥️ Tabellenansicht", "fr": "🖥️ Vue tableau"},
+    "view_label": {"zh": "审批视图", "en": "Approval View", "de": "Freigabeansicht", "fr": "Vue de validation"},
+}
+
+_STATUS_ICON: dict[str, str] = {"pending": "🟡", "approved": "✅", "rejected": "❌"}
+
 
 def alabel(key: str, lang: str = "zh") -> str:
     return A.get(key, {}).get(lang) or A.get(key, {}).get("en") or key
@@ -57,6 +77,10 @@ def alabel(key: str, lang: str = "zh") -> str:
 
 def clabel(key: str, lang: str = "zh") -> str:
     return COL.get(key, {}).get(lang) or COL.get(key, {}).get("en") or key
+
+
+def _card_label(key: str, lang: str = "zh") -> str:
+    return _CARD.get(key, {}).get(lang) or _CARD.get(key, {}).get("en") or key
 
 
 def _value_label(mapping: dict, value: str, lang: str) -> str:
@@ -160,6 +184,103 @@ def simulate_push(df: pd.DataFrame, lang: str, actor: str = "demo_user") -> tupl
         out.at[idx, "pushed_at"] = now
         rows.append({"timestamp": now, "actor": actor, "hotel_id": row["hotel_id"], "room_type": row["room_type"], "stay_date": row["stay_date"], "current_price": row["current_price"], "recommended_price": row["recommended_price"], "approved_price": row["approved_price"], "manual_override": bool(row["manual_override"]), "approval_status": row["approval_status"], "push_status": "pushed", "review_comment": row["review_comment"], "target_system": "SIMULATED_CHANNEL_MANAGER"})
     return out, pd.DataFrame(rows)
+
+
+def render_approval_cards(recommendations: pd.DataFrame, lang: str) -> None:
+    """Mobile-friendly card view: one expander per price action item."""
+    df: pd.DataFrame = st.session_state.approval_table
+
+    col_bulk, col_reset = st.columns(2)
+    with col_bulk:
+        if st.button(alabel("bulk_accept", lang), key="card_bulk_accept", use_container_width=True):
+            st.session_state.approval_table = accept_price_changes(st.session_state.approval_table)
+            st.rerun()
+    with col_reset:
+        if st.button(alabel("reset", lang), key="card_reset", use_container_width=True):
+            st.session_state.approval_table = build_approval_table(recommendations)
+            st.rerun()
+
+    action_df = df[df["action"] != "hold"]
+    pending_n = int((action_df["approval_status"] == "pending").sum())
+    approved_n = int((df["approval_status"] == "approved").sum())
+    rejected_n = int((action_df["approval_status"] == "rejected").sum())
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric(_card_label("pending_count", lang), pending_n)
+    m2.metric(_card_label("approved_count", lang), approved_n)
+    m3.metric(_card_label("rejected_count", lang), rejected_n)
+    st.caption(_card_label("hold_note", lang))
+
+    sorted_action = action_df.sort_values(
+        "approval_status",
+        key=lambda col: col.map({"pending": 0, "approved": 1, "rejected": 2}),
+    )
+
+    for idx, row in sorted_action.iterrows():
+        icon = _STATUS_ICON.get(str(row["approval_status"]), "⚪")
+        delta = float(row["recommended_price"]) - float(row["current_price"])
+        delta_str = f"+{delta:.0f}" if delta > 0 else f"{delta:.0f}"
+        room = translate_room_type(str(row["room_type"]), lang)
+        date = str(row["stay_date"])[:10]
+        push_tag = " 📤" if row.get("push_status") == "pushed" else ""
+        title = f"{icon} {date} | {room} | {float(row['current_price']):.0f} → {float(row['recommended_price']):.0f} ({delta_str}){push_tag}"
+
+        with st.expander(title, expanded=(str(row["approval_status"]) == "pending")):
+            if row.get("push_status") == "pushed":
+                st.success(_card_label("already_pushed", lang))
+
+            cc1, cc2, cc3 = st.columns(3)
+            cc1.metric(clabel("current_price", lang), f"{float(row['current_price']):.0f}")
+            cc2.metric(
+                clabel("recommended_price", lang),
+                f"{float(row['recommended_price']):.0f}",
+                delta=f"{delta:.0f}",
+            )
+            cc3.metric(clabel("confidence", lang), t(str(row.get("confidence", "")), lang))
+
+            new_price = st.number_input(
+                clabel("approved_price", lang),
+                value=float(row["approved_price"]),
+                min_value=0.0,
+                step=1.0,
+                key=f"card_price_{idx}",
+            )
+            new_comment = st.text_input(
+                clabel("review_comment", lang),
+                value=str(row.get("review_comment") or ""),
+                key=f"card_comment_{idx}",
+            )
+
+            is_pushed = row.get("push_status") == "pushed"
+            b1, b2 = st.columns(2)
+            with b1:
+                if st.button(
+                    _card_label("approve_btn", lang),
+                    key=f"card_approve_{idx}",
+                    use_container_width=True,
+                    type="primary" if str(row["approval_status"]) == "pending" else "secondary",
+                    disabled=is_pushed,
+                ):
+                    tbl = st.session_state.approval_table.copy()
+                    tbl.at[idx, "approval_status"] = "approved"
+                    tbl.at[idx, "approved_price"] = new_price
+                    tbl.at[idx, "selected"] = True
+                    tbl.at[idx, "review_comment"] = new_comment
+                    st.session_state.approval_table = update_manual_flags(tbl)
+                    st.rerun()
+            with b2:
+                if st.button(
+                    _card_label("reject_btn", lang),
+                    key=f"card_reject_{idx}",
+                    use_container_width=True,
+                    disabled=is_pushed,
+                ):
+                    tbl = st.session_state.approval_table.copy()
+                    tbl.at[idx, "approval_status"] = "rejected"
+                    tbl.at[idx, "selected"] = False
+                    tbl.at[idx, "review_comment"] = new_comment
+                    st.session_state.approval_table = update_manual_flags(tbl)
+                    st.rerun()
 
 
 def audit_log_bytes(log: pd.DataFrame) -> bytes:

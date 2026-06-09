@@ -18,10 +18,12 @@ from src.approval_workflow import (
     disabled_columns,
     editor_column_config,
     from_editor_display,
+    render_approval_cards,
     simulate_push,
     styled_preview,
     to_editor_display,
     update_manual_flags,
+    _card_label,
 )
 from src.audit_log_store import append_audit_log, load_audit_log
 from src.backtesting import bt_label, render_backtesting
@@ -44,6 +46,54 @@ from src.validation import validate_all
 
 
 st.set_page_config(page_title="Hotel Pricing Engine", layout="wide")
+
+
+def _inject_mobile_css() -> None:
+    st.markdown(
+        """
+        <style>
+        /* ── Mobile responsive overrides (≤640px) ── */
+        @media screen and (max-width: 640px) {
+            /* Prevent horizontal overflow from wide layout */
+            .main .block-container {
+                padding-left: 0.75rem !important;
+                padding-right: 0.75rem !important;
+                max-width: 100vw !important;
+                overflow-x: hidden !important;
+            }
+            /* Wrap column groups so 4-col metrics become 2×2 */
+            [data-testid="stHorizontalBlock"] {
+                flex-wrap: wrap !important;
+            }
+            [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+                min-width: calc(50% - 0.5rem) !important;
+                flex: 1 1 calc(50% - 0.5rem) !important;
+            }
+            /* Smaller metric text so values aren't clipped */
+            [data-testid="stMetricValue"] {
+                font-size: 1.1rem !important;
+            }
+            [data-testid="stMetricLabel"] {
+                font-size: 0.7rem !important;
+            }
+            /* Sidebar: full-width slide-over on mobile */
+            section[data-testid="stSidebar"] {
+                width: 85vw !important;
+                min-width: 85vw !important;
+            }
+            /* Tables: horizontal scroll instead of overflow */
+            [data-testid="stDataFrame"] > div,
+            [data-testid="stDataEditor"] > div {
+                overflow-x: auto !important;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+_inject_mobile_css()
 
 AUDIT_LOG_DIR = ROOT / "data" / "audit_logs"
 
@@ -176,6 +226,7 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         action_counts["action_label"] = action_counts["action"].map(lambda value: t(value, lang))
         st.plotly_chart(
             px.bar(action_counts, x="action_label", y="count", text="count", title=t("pricing_actions", lang)),
+            use_container_width=True,
         )
 
     with right:
@@ -186,6 +237,7 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         )
         st.plotly_chart(
             px.line(trend, x="stay_date", y="revpar", title=t("avg_revpar_by_date", lang)),
+            use_container_width=True,
         )
 
     st.subheader(t("top_opportunities", lang))
@@ -226,31 +278,47 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
         st.session_state.approval_table = build_approval_table(recommendations)
         st.session_state.approval_signature = signature
 
-    c1, c2 = st.columns([0.35, 0.65])
-    with c1:
-        if st.button(alabel("bulk_accept", lang), width="stretch"):
-            st.session_state.approval_table = accept_price_changes(st.session_state.approval_table)
-    with c2:
-        if st.button(alabel("reset", lang), width="stretch"):
-            st.session_state.approval_table = build_approval_table(recommendations)
-
-    st.caption(alabel("editor_caption", lang))
-    editor_display = to_editor_display(st.session_state.approval_table, lang)
-    edited_display = st.data_editor(
-        editor_display,
-        width="stretch",
-        hide_index=True,
-        column_config=editor_column_config(lang),
-        disabled=disabled_columns(lang),
-        key=f"approval_editor_{signature}_{lang}",
+    # View toggle: card view (mobile-friendly) vs table view (desktop power user)
+    view_card = _card_label("view_card", lang)
+    view_table = _card_label("view_table", lang)
+    view_mode = st.radio(
+        _card_label("view_label", lang),
+        options=[view_card, view_table],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="approval_view_mode",
+        index=0,
     )
 
-    edited_internal = from_editor_display(edited_display, lang)
-    approval_table = st.session_state.approval_table.copy()
-    for column in ["selected", "approved_price", "approval_status", "review_comment"]:
-        approval_table[column] = edited_internal[column].values
-    st.session_state.approval_table = update_manual_flags(approval_table)
+    if view_mode == view_card:
+        render_approval_cards(recommendations, lang)
+    else:
+        c1, c2 = st.columns([0.35, 0.65])
+        with c1:
+            if st.button(alabel("bulk_accept", lang), width="stretch"):
+                st.session_state.approval_table = accept_price_changes(st.session_state.approval_table)
+        with c2:
+            if st.button(alabel("reset", lang), width="stretch"):
+                st.session_state.approval_table = build_approval_table(recommendations)
 
+        st.caption(alabel("editor_caption", lang))
+        editor_display = to_editor_display(st.session_state.approval_table, lang)
+        edited_display = st.data_editor(
+            editor_display,
+            width="stretch",
+            hide_index=True,
+            column_config=editor_column_config(lang),
+            disabled=disabled_columns(lang),
+            key=f"approval_editor_{signature}_{lang}",
+        )
+
+        edited_internal = from_editor_display(edited_display, lang)
+        approval_table = st.session_state.approval_table.copy()
+        for column in ["selected", "approved_price", "approval_status", "review_comment"]:
+            approval_table[column] = edited_internal[column].values
+        st.session_state.approval_table = update_manual_flags(approval_table)
+
+    # Common to both views: full preview, channel prices, push button, audit log
     st.caption(alabel("preview_caption", lang))
     st.dataframe(styled_preview(st.session_state.approval_table, lang), width="stretch", hide_index=True)
     render_channel_price_preview(st.session_state.approval_table, lang)
@@ -332,6 +400,10 @@ with st.sidebar:
         help=PRICE_ROUNDING_HELP.get(lang, PRICE_ROUNDING_HELP["en"]),
     )
 
+    st.divider()
+    with st.expander(hotel_config_label("tab", lang), expanded=False):
+        hotel_config = render_hotel_configuration(hotel_config, lang)
+
 try:
     if use_demo:
         hotel_data = load_demo_data(ROOT / "sample_data")
@@ -382,14 +454,27 @@ if missing_recommendation_rows > 0:
 
 overview = summarize_overview(metrics)
 
-tab_dashboard, tab_recommendations, tab_approval, tab_backtesting, tab_config, tab_data = st.tabs(
+with st.sidebar:
+    st.divider()
+    with st.expander(bt_label("tab", lang), expanded=False):
+        render_backtesting(
+            metrics=metrics,
+            bookings=hotel_data.bookings,
+            current_prices=hotel_data.current_prices,
+            lang=lang,
+            default_horizon_days=horizon_days,
+            max_change_pct=max_change_pct,
+            price_rounding_strategy=price_rounding_strategy,
+            room_price_bounds=room_price_bounds,
+        )
+    with st.expander(t("data_preview", lang), expanded=False):
+        render_data_preview(hotel_data, lang)
+
+tab_dashboard, tab_recommendations, tab_approval = st.tabs(
     [
         t("sales_dashboard", lang),
         t("recommendations", lang),
         alabel("tab", lang),
-        bt_label("tab", lang),
-        hotel_config_label("tab", lang),
-        t("data_preview", lang),
     ]
 )
 
@@ -406,23 +491,5 @@ with tab_recommendations:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
-with tab_backtesting:
-    render_backtesting(
-        metrics=metrics,
-        bookings=hotel_data.bookings,
-        current_prices=hotel_data.current_prices,
-        lang=lang,
-        default_horizon_days=horizon_days,
-        max_change_pct=max_change_pct,
-        price_rounding_strategy=price_rounding_strategy,
-        room_price_bounds=room_price_bounds,
-    )
-
 with tab_approval:
     render_price_approval_publishing(recommendations, lang)
-
-with tab_config:
-    hotel_config = render_hotel_configuration(hotel_config, lang)
-
-with tab_data:
-    render_data_preview(hotel_data, lang)
