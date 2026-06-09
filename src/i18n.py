@@ -1,0 +1,209 @@
+LANGUAGES = {
+    "zh": "中文",
+    "en": "English",
+    "de": "Deutsch",
+    "fr": "Français",
+}
+
+TRANSLATIONS = {
+    "app_title": {
+        "zh": "酒店收益管理与智能调价助手",
+        "en": "Hotel Revenue & Pricing Assistant",
+        "de": "Hotel Revenue- und Preisassistent",
+        "fr": "Assistant de revenu et de tarification hôtelière",
+    },
+    "app_caption": {
+        "zh": "上传酒店订单数据，查看关键收益指标，并生成可解释的房价建议。",
+        "en": "Upload hotel booking data, review revenue KPIs, and generate explainable room-price recommendations.",
+        "de": "Laden Sie Hotelbuchungsdaten hoch, prüfen Sie Revenue-KPIs und erhalten Sie erklärbare Preisempfehlungen.",
+        "fr": "Importez les données de réservation, suivez les indicateurs clés et générez des recommandations tarifaires explicables.",
+    },
+    "language": {"zh": "语言", "en": "Language", "de": "Sprache", "fr": "Langue"},
+    "configuration": {"zh": "配置", "en": "Configuration", "de": "Konfiguration", "fr": "Configuration"},
+    "data": {"zh": "数据", "en": "Data", "de": "Daten", "fr": "Données"},
+    "use_demo_data": {"zh": "使用内置演示数据", "en": "Use bundled demo data", "de": "Demo-Daten verwenden", "fr": "Utiliser les données de démonstration"},
+    "recommendation_horizon": {"zh": "推荐周期", "en": "Recommendation horizon", "de": "Empfehlungszeitraum", "fr": "Horizon de recommandation"},
+    "max_price_change": {"zh": "单次最大调价幅度", "en": "Max one-time price change", "de": "Maximale einmalige Preisänderung", "fr": "Variation tarifaire maximale"},
+    "upload_hint": {
+        "zh": "请上传三个 CSV 文件，或打开内置演示数据。",
+        "en": "Upload all three CSV files or switch on bundled demo data.",
+        "de": "Laden Sie alle drei CSV-Dateien hoch oder aktivieren Sie die Demo-Daten.",
+        "fr": "Importez les trois fichiers CSV ou activez les données de démonstration.",
+    },
+    "load_error": {"zh": "无法加载数据", "en": "Could not load data", "de": "Daten konnten nicht geladen werden", "fr": "Impossible de charger les données"},
+    "validation_failed": {"zh": "数据校验失败。", "en": "Data validation failed.", "de": "Datenvalidierung fehlgeschlagen.", "fr": "Échec de la validation des données."},
+    "sales_dashboard": {"zh": "销售演示看板", "en": "Sales Demo Dashboard", "de": "Vertriebs-Demo-Dashboard", "fr": "Tableau de bord de démonstration commerciale"},
+    "recommendations": {"zh": "调价建议", "en": "Recommendations", "de": "Empfehlungen", "fr": "Recommandations"},
+    "data_preview": {"zh": "数据预览", "en": "Data Preview", "de": "Datenvorschau", "fr": "Aperçu des données"},
+    "core_metrics": {"zh": "核心指标", "en": "Core Metrics", "de": "Kernkennzahlen", "fr": "Indicateurs clés"},
+    "room_revenue": {"zh": "房费收入", "en": "Room Revenue", "de": "Zimmerumsatz", "fr": "Revenu chambres"},
+    "occupancy": {"zh": "入住率", "en": "Occupancy", "de": "Auslastung", "fr": "Taux d’occupation"},
+    "adr": {"zh": "平均房价 ADR", "en": "ADR", "de": "ADR", "fr": "ADR"},
+    "revpar": {"zh": "RevPAR", "en": "RevPAR", "de": "RevPAR", "fr": "RevPAR"},
+    "executive_summary": {"zh": "管理层摘要", "en": "Executive Summary", "de": "Management-Zusammenfassung", "fr": "Résumé exécutif"},
+    "summary_text": {
+        "zh": "系统已根据历史订单、库存、当前价格和近期 pickup 生成未来周期的人工复核调价建议。重点关注上调/下调日期、低置信度建议和临近入住日期的库存压力。",
+        "en": "The system generated human-review pricing recommendations for the selected future horizon using historical bookings, inventory, current prices and recent pickup. Focus on price changes, low-confidence recommendations and inventory pressure close to arrival.",
+        "de": "Das System hat für den gewählten Zeitraum Preisempfehlungen zur manuellen Prüfung auf Basis historischer Buchungen, Bestände, aktueller Preise und jüngstem Pickup erstellt. Achten Sie besonders auf Preisänderungen, Empfehlungen mit niedriger Sicherheit und kurzfristigen Bestandsdruck.",
+        "fr": "Le système a généré des recommandations tarifaires à valider manuellement à partir des réservations historiques, des stocks, des prix actuels et du pickup récent. Priorité aux changements de prix, aux recommandations peu sûres et à la pression de stock proche de l’arrivée.",
+    },
+    "pricing_actions": {"zh": "调价动作分布", "en": "Pricing Actions", "de": "Preisaktionen", "fr": "Actions tarifaires"},
+    "top_opportunities": {"zh": "重点机会与风险", "en": "Top Opportunities & Risks", "de": "Wichtigste Chancen und Risiken", "fr": "Principales opportunités et risques"},
+    "revpar_trend": {"zh": "RevPAR 趋势", "en": "RevPAR Trend", "de": "RevPAR-Trend", "fr": "Tendance RevPAR"},
+    "avg_revpar_by_date": {"zh": "每日平均 RevPAR", "en": "Average RevPAR by stay date", "de": "Durchschnittlicher RevPAR nach Aufenthaltstag", "fr": "RevPAR moyen par date de séjour"},
+    "filter_actions": {"zh": "筛选动作", "en": "Filter actions", "de": "Aktionen filtern", "fr": "Filtrer les actions"},
+    "download_excel": {"zh": "下载 Excel 报表", "en": "Download Excel report", "de": "Excel-Bericht herunterladen", "fr": "Télécharger le rapport Excel"},
+    "bookings": {"zh": "订单", "en": "Bookings", "de": "Buchungen", "fr": "Réservations"},
+    "inventory": {"zh": "库存", "en": "Inventory", "de": "Bestand", "fr": "Inventaire"},
+    "current_prices": {"zh": "当前价格", "en": "Current prices", "de": "Aktuelle Preise", "fr": "Prix actuels"},
+    "increase": {"zh": "上调", "en": "Increase", "de": "Erhöhen", "fr": "Augmenter"},
+    "decrease": {"zh": "下调", "en": "Decrease", "de": "Senken", "fr": "Baisser"},
+    "hold": {"zh": "保持", "en": "Hold", "de": "Halten", "fr": "Maintenir"},
+    "high": {"zh": "高", "en": "High", "de": "Hoch", "fr": "Élevée"},
+    "medium": {"zh": "中", "en": "Medium", "de": "Mittel", "fr": "Moyenne"},
+    "low": {"zh": "低", "en": "Low", "de": "Niedrig", "fr": "Faible"},
+    "price_change_count": {"zh": "需调价日期", "en": "Dates needing action", "de": "Tage mit Handlungsbedarf", "fr": "Dates nécessitant une action"},
+    "high_confidence_count": {"zh": "高置信度建议", "en": "High-confidence recommendations", "de": "Empfehlungen mit hoher Sicherheit", "fr": "Recommandations à forte confiance"},
+    "risk_count": {"zh": "风险提示", "en": "Risk flags", "de": "Risikohinweise", "fr": "Alertes de risque"},
+    "no_priority_items": {"zh": "当前周期没有明显的重点调价机会。", "en": "No major pricing opportunities in the selected horizon.", "de": "Keine wesentlichen Preisoptimierungschancen im gewählten Zeitraum.", "fr": "Aucune opportunité tarifaire majeure sur l’horizon sélectionné."},
+    "column_stay_date": {"zh": "入住日期", "en": "Stay Date", "de": "Aufenthaltsdatum", "fr": "Date de séjour"},
+    "column_hotel_id": {"zh": "酒店", "en": "Hotel", "de": "Hotel", "fr": "Hôtel"},
+    "column_room_type": {"zh": "房型", "en": "Room Type", "de": "Zimmertyp", "fr": "Type de chambre"},
+    "column_current_price": {"zh": "当前价", "en": "Current Price", "de": "Aktueller Preis", "fr": "Prix actuel"},
+    "column_recommended_price": {"zh": "推荐价", "en": "Recommended Price", "de": "Empfohlener Preis", "fr": "Prix recommandé"},
+    "column_action": {"zh": "建议动作", "en": "Action", "de": "Aktion", "fr": "Action"},
+    "column_expected_revenue_delta": {"zh": "预计收益变化", "en": "Expected Revenue Delta", "de": "Erwartete Umsatzänderung", "fr": "Variation de revenu estimée"},
+    "column_confidence": {"zh": "置信度", "en": "Confidence", "de": "Sicherheit", "fr": "Confiance"},
+    "column_occupancy": {"zh": "入住率", "en": "Occupancy", "de": "Auslastung", "fr": "Occupation"},
+    "column_remaining_inventory_ratio": {"zh": "剩余库存比例", "en": "Remaining Inventory Ratio", "de": "Restbestandsquote", "fr": "Ratio de stock restant"},
+    "column_pickup_14d": {"zh": "14天 Pickup", "en": "14-day Pickup", "de": "14-Tage-Pickup", "fr": "Pickup 14 jours"},
+    "column_main_reasons": {"zh": "主要原因", "en": "Main Reasons", "de": "Hauptgründe", "fr": "Raisons principales"},
+    "column_risk_flags": {"zh": "风险提示", "en": "Risk Flags", "de": "Risikohinweise", "fr": "Alertes de risque"},
+}
+
+REASONS = {
+    "weekend demand pattern": {
+        "zh": "周末需求较强",
+        "en": "Weekend demand pattern",
+        "de": "Wochenendnachfrage",
+        "fr": "Demande de week-end",
+    },
+    "occupancy above similar historical dates": {
+        "zh": "入住率高于历史类似日期",
+        "en": "Occupancy above similar historical dates",
+        "de": "Auslastung über ähnlichen historischen Tagen",
+        "fr": "Occupation supérieure aux dates historiques similaires",
+    },
+    "occupancy below similar historical dates": {
+        "zh": "入住率低于历史类似日期",
+        "en": "Occupancy below similar historical dates",
+        "de": "Auslastung unter ähnlichen historischen Tagen",
+        "fr": "Occupation inférieure aux dates historiques similaires",
+    },
+    "recent 14-day pickup is strong": {
+        "zh": "最近14天新增预订较强",
+        "en": "Recent 14-day pickup is strong",
+        "de": "Starker Pickup in den letzten 14 Tagen",
+        "fr": "Pickup récent sur 14 jours élevé",
+    },
+    "weak recent pickup close to arrival": {
+        "zh": "临近入住但近期新增预订偏弱",
+        "en": "Weak recent pickup close to arrival",
+        "de": "Schwacher Pickup kurz vor Anreise",
+        "fr": "Pickup faible proche de l’arrivée",
+    },
+    "remaining inventory is limited": {
+        "zh": "剩余库存有限",
+        "en": "Remaining inventory is limited",
+        "de": "Begrenzter Restbestand",
+        "fr": "Stock restant limité",
+    },
+    "high remaining inventory close to arrival": {
+        "zh": "临近入住但剩余库存较高",
+        "en": "High remaining inventory close to arrival",
+        "de": "Hoher Restbestand kurz vor Anreise",
+        "fr": "Stock restant élevé proche de l’arrivée",
+    },
+    "no strong demand or inventory signal": {
+        "zh": "暂无强需求或库存信号",
+        "en": "No strong demand or inventory signal",
+        "de": "Kein starkes Nachfrage- oder Bestandssignal",
+        "fr": "Aucun signal fort de demande ou de stock",
+    },
+}
+
+RISKS = {
+    "very close to stay date": {
+        "zh": "非常接近入住日期",
+        "en": "Very close to stay date",
+        "de": "Sehr nah am Aufenthaltstag",
+        "fr": "Très proche de la date de séjour",
+    },
+    "missing or invalid inventory": {
+        "zh": "库存缺失或无效",
+        "en": "Missing or invalid inventory",
+        "de": "Fehlender oder ungültiger Bestand",
+        "fr": "Stock manquant ou invalide",
+    },
+    "limited historical baseline": {
+        "zh": "历史基准数据有限",
+        "en": "Limited historical baseline",
+        "de": "Begrenzte historische Basis",
+        "fr": "Référence historique limitée",
+    },
+}
+
+COLUMN_KEYS = {
+    "stay_date": "column_stay_date",
+    "hotel_id": "column_hotel_id",
+    "room_type": "column_room_type",
+    "current_price": "column_current_price",
+    "recommended_price": "column_recommended_price",
+    "action": "column_action",
+    "expected_revenue_delta": "column_expected_revenue_delta",
+    "confidence": "column_confidence",
+    "occupancy": "column_occupancy",
+    "remaining_inventory_ratio": "column_remaining_inventory_ratio",
+    "pickup_14d": "column_pickup_14d",
+    "main_reasons": "column_main_reasons",
+    "risk_flags": "column_risk_flags",
+}
+
+
+def t(key: str, lang: str = "zh") -> str:
+    return TRANSLATIONS.get(key, {}).get(lang) or TRANSLATIONS.get(key, {}).get("en") or key
+
+
+def translate_value(value, lang: str = "zh"):
+    if value in TRANSLATIONS:
+        return t(value, lang)
+    return value
+
+
+def translate_reason_list(text: str, lang: str = "zh") -> str:
+    if not text:
+        return ""
+    parts = [part.strip() for part in str(text).split(";") if part.strip()]
+    return "; ".join(REASONS.get(part, {}).get(lang, part) for part in parts)
+
+
+def translate_risk_list(text: str, lang: str = "zh") -> str:
+    if not text:
+        return ""
+    parts = [part.strip() for part in str(text).split(";") if part.strip()]
+    return "; ".join(RISKS.get(part, {}).get(lang, part) for part in parts)
+
+
+def localized_recommendations(df, lang: str = "zh"):
+    localized = df.copy()
+    if "action" in localized.columns:
+        localized["action"] = localized["action"].map(lambda value: translate_value(value, lang))
+    if "confidence" in localized.columns:
+        localized["confidence"] = localized["confidence"].map(lambda value: translate_value(value, lang))
+    if "main_reasons" in localized.columns:
+        localized["main_reasons"] = localized["main_reasons"].map(lambda value: translate_reason_list(value, lang))
+    if "risk_flags" in localized.columns:
+        localized["risk_flags"] = localized["risk_flags"].map(lambda value: translate_risk_list(value, lang))
+
+    localized = localized.rename(columns={column: t(key, lang) for column, key in COLUMN_KEYS.items() if column in localized.columns})
+    return localized
