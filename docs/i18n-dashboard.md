@@ -37,8 +37,8 @@ Streamlit 页面右上角提供语言选择：
    - Excel 默认导出语言跟随当前界面语言，也可以手动改为中文、英文、德文或法文
 
 3. **回测分析**
-   - 使用历史已发生的入住日期模拟推荐价
-   - 使用实际售出房间数做静态销量回测
+   - 只使用历史观察日以前已知订单生成推荐，避免使用观察日之后才产生的订单
+   - 使用最终实际售出房间数做静态销量回测
    - 展示基准收入、推荐价静态收入、静态收益变化和变化率
    - 展示每日静态收益变化图
    - 支持导出回测明细 Excel
@@ -48,11 +48,13 @@ Streamlit 页面右上角提供语言选择：
    - 审批表中的房型名称按当前语言翻译
    - 人工修改、已推送、已拒绝行会有颜色提示
    - 支持模拟一键推送和下载审批日志
+   - 已推送行再次点击推送不会重复写入日志
    - 审批与推送日志会持久化到 `data/audit_logs/price_approval_publishing_log.csv`
 
 5. **酒店配置**
    - 配置酒店名称、城市、市场定位、货币
    - 配置房型、基准价、最低价、最高价、周末加价
+   - 只覆盖配置中存在的房型；上传数据里的未知房型会保留原始 current_price
    - 支持下载和上传酒店配置 JSON
 
 6. **数据预览**
@@ -115,28 +117,24 @@ Excel 工作簿包含两个 sheet：
 
 ## VPS 更新步骤
 
+当前 VPS 已使用 systemd 服务 `hotel-pricing-engine.service`。
+
 ```bash
 cd /data/projects/hotel-pricing-engine
 git pull
-
-# 如果已经用 nohup 运行，需要先停旧进程
-pkill -f "streamlit run app/streamlit_app.py" || true
-
-nohup python3 -m streamlit run app/streamlit_app.py \
-    --server.port 8501 \
-    --server.address 127.0.0.1 \
-    --server.headless true > /tmp/hotel-pricing.log 2>&1 &
+sudo systemctl restart hotel-pricing-engine
+sudo systemctl status hotel-pricing-engine --no-pager
 ```
 
 查看日志：
 
 ```bash
-tail -f /tmp/hotel-pricing.log
+sudo journalctl -u hotel-pricing-engine -n 80 --no-pager
 ```
 
 ## 后续建议
 
-- 把 Streamlit 启动方式从 `nohup` 改为 systemd service。
 - 把审批日志从 CSV 升级为 SQLite。
-- 把回测从静态销量回测升级为带价格弹性的需求模型。
+- 把回测从静态销量回测升级为候选价格收益模拟和价格弹性模型。
 - 增加 Channel Manager 导入模板导出。
+- 为长期公网访问补充基础认证或访问保护。
