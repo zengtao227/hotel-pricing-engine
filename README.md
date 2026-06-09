@@ -22,6 +22,7 @@
 - 支持价格审批与发布演示：最终批准价、人工修改标记、模拟推送、审计日志
 - 支持审批与推送日志持久化到本地 CSV
 - 支持价格弹性收益回测、候选价收益曲线和静态实际销量对照，并可导出回测明细 Excel
+- 已开始设计 Channel Pricing Rules，用于从内部批准基准价生成不同 OTA / 官网 / 会员渠道展示价和净收益估算
 
 ## 快速启动
 
@@ -98,17 +99,20 @@ python scripts/create_demo_data.py --source data/raw/hotel_bookings.csv --output
 
 ## 文档结构
 
-- [CONTEXT.md](CONTEXT.md): 项目上下文、术语和协作规则
+- [CONTEXT.md](CONTEXT.md): 项目上下文、术语、文件地图和协作规则
+- [docs/demo-presentation-script.md](docs/demo-presentation-script.md): 演示文稿文稿，后续生成 HTML / PPT 优先使用
+- [docs/revenue-optimization-model.md](docs/revenue-optimization-model.md): 收益最大化定价模型、剩余库存定价、渠道价和数学基础
+- [docs/ota-channel-pricing-notes.md](docs/ota-channel-pricing-notes.md): OTA 折扣、佣金、渠道价和价格更新频率说明
+- [docs/automated-pricing-monitoring.md](docs/automated-pricing-monitoring.md): 自动价格监控、自动计算和自动发布护栏设计
 - [docs/requirements.md](docs/requirements.md): 产品需求与 MVP 验收标准
 - [docs/data-requirements.md](docs/data-requirements.md): 数据字段、口径和质量要求
 - [docs/modeling-approach.md](docs/modeling-approach.md): 建模路线与优化思路
-- [docs/revenue-optimization-model.md](docs/revenue-optimization-model.md): 收益最大化定价模型与数学基础
 - [docs/roadmap.md](docs/roadmap.md): 阶段计划
 - [docs/open-questions.md](docs/open-questions.md): 待确认问题
-- [docs/mvp-implementation.md](docs/mvp-implementation.md): MVP 运行和实现说明
 - [docs/deployment.md](docs/deployment.md): VPS 部署说明
 - [docs/i18n-dashboard.md](docs/i18n-dashboard.md): 多语言界面和销售演示看板说明
 - [docs/price-approval-and-publishing.md](docs/price-approval-and-publishing.md): 价格审批与发布使用手册
+- [docs/marketing-and-product-roadmap.md](docs/marketing-and-product-roadmap.md): 商业化、客户定位和产品路线思考
 
 ## 商业化方向
 
