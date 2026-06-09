@@ -40,9 +40,9 @@ COLUMN_LABELS = {
     "recommended_price": {"zh": "推荐价", "en": "Recommended Price", "de": "Empfohlener Preis", "fr": "Prix recommandé"},
     "action": {"zh": "建议动作", "en": "Action", "de": "Aktion", "fr": "Action"},
     "confidence": {"zh": "置信度", "en": "Confidence", "de": "Sicherheit", "fr": "Confiance"},
-    "sold_rooms": {"zh": "观察日已售房间", "en": "Known Sold Rooms", "de": "Bekannte verkaufte Zimmer", "fr": "Chambres vendues connues"},
+    "known_sold_rooms": {"zh": "观察日已售房间", "en": "Known Sold Rooms", "de": "Bekannte verkaufte Zimmer", "fr": "Chambres vendues connues"},
     "realized_sold_rooms": {"zh": "最终实际售出", "en": "Final Realized Sold Rooms", "de": "Endgültig verkaufte Zimmer", "fr": "Chambres finalement vendues"},
-    "occupancy": {"zh": "观察日入住率", "en": "Known Occupancy", "de": "Bekannte Auslastung", "fr": "Occupation connue"},
+    "known_occupancy": {"zh": "观察日入住率", "en": "Known Occupancy", "de": "Bekannte Auslastung", "fr": "Occupation connue"},
     "realized_occupancy": {"zh": "最终实际入住率", "en": "Final Realized Occupancy", "de": "Endgültige Auslastung", "fr": "Occupation finale"},
     "baseline_revenue": {"zh": "基准收入", "en": "Baseline Revenue", "de": "Basisumsatz", "fr": "Revenu de référence"},
     "recommended_revenue": {"zh": "推荐价静态收入", "en": "Recommended Static Revenue", "de": "Empfohlener statischer Umsatz", "fr": "Revenu statique recommandé"},
@@ -74,6 +74,14 @@ def _bookings_as_of(bookings: pd.DataFrame, observation_date) -> pd.DataFrame:
     return b[b["booking_date"] <= pd.to_datetime(observation_date).normalize()].copy()
 
 
+def _known_snapshot(as_of_metrics: pd.DataFrame) -> pd.DataFrame:
+    known = as_of_metrics.copy()
+    known["stay_date"] = pd.to_datetime(known["stay_date"]).dt.date
+    return known.rename(columns={"sold_rooms": "known_sold_rooms", "occupancy": "known_occupancy"})[
+        ["hotel_id", "room_type", "stay_date", "known_sold_rooms", "known_occupancy"]
+    ]
+
+
 def run_static_backtest(metrics, bookings, current_prices, observation_date, horizon_days, max_change_pct, price_rounding_strategy, room_price_bounds=None):
     observation_date = pd.to_datetime(observation_date).normalize()
     known_bookings = _bookings_as_of(bookings, observation_date)
@@ -92,15 +100,19 @@ def run_static_backtest(metrics, bookings, current_prices, observation_date, hor
     if recommendations.empty:
         return recommendations, {}
 
+    recs = recommendations.drop(columns=["occupancy"], errors="ignore")
+    detail = recs.merge(_known_snapshot(as_of_metrics), how="left", on=["hotel_id", "room_type", "stay_date"])
+
     realized = metrics.copy()
     realized["stay_date"] = pd.to_datetime(realized["stay_date"]).dt.date
     realized = realized.rename(columns={"sold_rooms": "realized_sold_rooms", "occupancy": "realized_occupancy", "room_revenue": "realized_room_revenue"})
-    detail = recommendations.merge(
+    detail = detail.merge(
         realized[["hotel_id", "room_type", "stay_date", "realized_sold_rooms", "realized_occupancy", "realized_room_revenue"]],
         how="left",
         on=["hotel_id", "room_type", "stay_date"],
     )
-    fill_cols = ["sold_rooms", "occupancy", "realized_sold_rooms", "realized_occupancy", "realized_room_revenue"]
+
+    fill_cols = ["known_sold_rooms", "known_occupancy", "realized_sold_rooms", "realized_occupancy", "realized_room_revenue"]
     detail[fill_cols] = detail[fill_cols].fillna(0)
     detail["baseline_revenue"] = detail["current_price"].astype(float) * detail["realized_sold_rooms"].astype(float)
     detail["recommended_revenue"] = detail["recommended_price"].astype(float) * detail["realized_sold_rooms"].astype(float)
@@ -120,7 +132,7 @@ def run_static_backtest(metrics, bookings, current_prices, observation_date, hor
 
 
 def localized_backtest_detail(detail: pd.DataFrame, lang: str) -> pd.DataFrame:
-    columns = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price", "action", "confidence", "sold_rooms", "occupancy", "realized_sold_rooms", "realized_occupancy", "baseline_revenue", "recommended_revenue", "static_revenue_delta", "main_reasons", "risk_flags"]
+    columns = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price", "action", "confidence", "known_sold_rooms", "known_occupancy", "realized_sold_rooms", "realized_occupancy", "baseline_revenue", "recommended_revenue", "static_revenue_delta", "main_reasons", "risk_flags"]
     out = detail[[c for c in columns if c in detail.columns]].copy()
     if "room_type" in out.columns:
         out["room_type"] = out["room_type"].map(lambda v: translate_room_type(v, lang))
