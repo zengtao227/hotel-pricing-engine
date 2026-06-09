@@ -29,17 +29,34 @@ Streamlit 页面右上角提供语言选择：
    - 支持按上调、下调、保持筛选
    - 表格字段已按当前语言翻译
    - 推荐原因和风险提示已做多语言映射
-   - 支持下载 Excel 报表
+   - 支持选择 Excel 导出语言
+   - Excel 默认导出语言跟随当前界面语言，也可以手动改为中文、英文、德文或法文
 
 3. **数据预览**
    - 订单数据
    - 库存数据
    - 当前价格数据
 
+## Excel 导出
+
+`调价建议` 标签页中有独立的 Excel 导出语言选择器：
+
+- 默认值：当前界面语言
+- 可选语言：中文、English、Deutsch、Français
+- 导出文件名格式：`hotel_pricing_recommendations_<language>.xlsx`
+
+Excel 工作簿包含两个 sheet：
+
+1. 调价建议 / Price Recommendations / Preisempfehlungen / Recommandations
+2. 每日指标 / Daily Metrics / Tageskennzahlen / Indicateurs journaliers
+
+调价建议 sheet 会本地化字段名、建议动作、置信度、推荐原因和风险提示。每日指标 sheet 会本地化字段名。
+
 ## 技术实现
 
 - `src/i18n.py`：集中保存多语言文案、字段名映射、推荐原因和风险提示翻译。
-- `app/streamlit_app.py`：负责页面布局、语言选择、销售演示看板和表格展示。
+- `src/report_export.py`：负责生成多语言 Excel 报表。
+- `app/streamlit_app.py`：负责页面布局、语言选择、销售演示看板、表格展示和导出语言选择。
 
 ## VPS 更新步骤
 
@@ -65,5 +82,4 @@ tail -f /tmp/hotel-pricing.log
 ## 后续建议
 
 - 把 Streamlit 启动方式从 `nohup` 改为 systemd service。
-- Excel 报表后续也可以根据当前语言导出多语言字段名。
 - 如果要面向客户演示，可以再加入首页欢迎页、产品卖点卡片、案例说明和联系入口。
