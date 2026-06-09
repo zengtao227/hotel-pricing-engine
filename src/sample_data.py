@@ -31,7 +31,7 @@ def build_demo_data(seed: int = 42):
     hotel_id = "DEMO_HOTEL"
     start = date(2026, 1, 1)
     observation_date = date(2026, 2, 15)
-    end = date(2026, 3, 31)
+    end = observation_date + timedelta(days=60)
 
     dates = pd.date_range(start, end, freq="D")
 

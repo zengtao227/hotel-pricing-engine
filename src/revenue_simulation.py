@@ -210,6 +210,61 @@ def _expected_revenue(
     return float(expected_revenue), float(expected_new_sold)
 
 
+def simulate_candidate_revenue_curve(
+    *,
+    current_price: float,
+    sellable_rooms: float,
+    known_sold_rooms: float,
+    known_room_revenue: float,
+    demand_forecast_at_current_price: float,
+    demand_elasticity: float,
+    max_change_pct: float,
+    rounding_strategy: str,
+    price_floor: Optional[float] = None,
+    price_ceiling: Optional[float] = None,
+) -> list[dict[str, float]]:
+    """Return expected revenue for every feasible candidate price."""
+    price: float = max(_finite_number(current_price), 0.0)
+    sellable: float = max(_finite_number(sellable_rooms), 0.0)
+    known_sold: float = max(_finite_number(known_sold_rooms), 0.0)
+    known_revenue: float = _finite_number(known_room_revenue, 0.0)
+    demand_forecast: float = max(_finite_number(demand_forecast_at_current_price), known_sold)
+    elasticity: float = _clip(_finite_number(demand_elasticity, DEFAULT_ELASTICITY), MIN_ELASTICITY, MAX_ELASTICITY)
+
+    if price <= 0 or sellable <= 0:
+        return []
+
+    remaining_capacity: float = max(sellable - known_sold, 0.0)
+    price_neutral_new_demand: float = max(demand_forecast - known_sold, 0.0)
+    candidates: list[float] = build_candidate_prices(
+        current_price=price,
+        max_change_pct=max_change_pct,
+        rounding_strategy=rounding_strategy,
+        price_floor=price_floor,
+        price_ceiling=price_ceiling,
+    )
+
+    rows: list[dict[str, float]] = []
+    for candidate_price in candidates:
+        expected_revenue, expected_new_sold = _expected_revenue(
+            candidate_price=candidate_price,
+            current_price=price,
+            known_revenue=known_revenue,
+            price_neutral_new_demand=price_neutral_new_demand,
+            remaining_capacity=remaining_capacity,
+            elasticity=elasticity,
+        )
+        rows.append(
+            {
+                "candidate_price": round(candidate_price, 2),
+                "expected_revenue": round(expected_revenue, 2),
+                "expected_new_sold_rooms": round(expected_new_sold, 3),
+                "expected_sold_rooms": round(known_sold + expected_new_sold, 3),
+            }
+        )
+    return rows
+
+
 def simulate_revenue_maximizing_price(
     *,
     current_price: float,

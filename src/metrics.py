@@ -3,6 +3,18 @@ import pandas as pd
 
 
 ACTIVE_STATUSES = {"confirmed", "stayed", "checked_in", "checked_out"}
+ROOM_NIGHT_COLUMNS = [
+    "booking_id",
+    "hotel_id",
+    "room_type",
+    "booking_date",
+    "stay_date",
+    "rooms",
+    "gross_room_revenue",
+    "net_room_revenue",
+    "status",
+    "channel",
+]
 
 
 def expand_bookings_to_room_nights(bookings: pd.DataFrame) -> pd.DataFrame:
@@ -32,7 +44,7 @@ def expand_bookings_to_room_nights(bookings: pd.DataFrame) -> pd.DataFrame:
                 }
             )
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=ROOM_NIGHT_COLUMNS)
 
 
 def calculate_daily_metrics(bookings: pd.DataFrame, inventory: pd.DataFrame) -> pd.DataFrame:
@@ -54,22 +66,18 @@ def calculate_daily_metrics(bookings: pd.DataFrame, inventory: pd.DataFrame) -> 
     metrics = inv.merge(sold, how="left", on=["hotel_id", "room_type", "stay_date"])
     for column in ["sold_rooms", "room_revenue", "booking_count"]:
         metrics[column] = metrics[column].fillna(0)
+        metrics[column] = pd.to_numeric(metrics[column], errors="coerce").fillna(0)
 
-    metrics["occupancy"] = np.where(
-        metrics["sellable_rooms"] > 0,
-        metrics["sold_rooms"] / metrics["sellable_rooms"],
-        np.nan,
-    )
-    metrics["adr"] = np.where(
-        metrics["sold_rooms"] > 0,
-        metrics["room_revenue"] / metrics["sold_rooms"],
-        np.nan,
-    )
-    metrics["revpar"] = np.where(
-        metrics["sellable_rooms"] > 0,
-        metrics["room_revenue"] / metrics["sellable_rooms"],
-        np.nan,
-    )
+    metrics["sellable_rooms"] = pd.to_numeric(metrics["sellable_rooms"], errors="coerce").fillna(0)
+    metrics["occupancy"] = np.nan
+    metrics["adr"] = np.nan
+    metrics["revpar"] = np.nan
+
+    sellable_mask = metrics["sellable_rooms"] > 0
+    sold_mask = metrics["sold_rooms"] > 0
+    metrics.loc[sellable_mask, "occupancy"] = metrics.loc[sellable_mask, "sold_rooms"] / metrics.loc[sellable_mask, "sellable_rooms"]
+    metrics.loc[sold_mask, "adr"] = metrics.loc[sold_mask, "room_revenue"] / metrics.loc[sold_mask, "sold_rooms"]
+    metrics.loc[sellable_mask, "revpar"] = metrics.loc[sellable_mask, "room_revenue"] / metrics.loc[sellable_mask, "sellable_rooms"]
     metrics["day_of_week"] = metrics["stay_date"].dt.day_name()
     metrics["is_weekend"] = metrics["stay_date"].dt.weekday >= 5
     return metrics.sort_values(["stay_date", "room_type"])

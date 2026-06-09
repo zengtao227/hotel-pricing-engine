@@ -9,26 +9,36 @@ import streamlit as st
 from .i18n import t, translate_reason_list, translate_risk_list, translate_room_type
 from .metrics import calculate_daily_metrics
 from .pricing_engine import generate_recommendations
+from .revenue_simulation import simulate_candidate_revenue_curve
 
 
 BT = {
     "tab": {"zh": "回测分析", "en": "Backtesting", "de": "Backtesting", "fr": "Backtesting"},
     "intro": {
-        "zh": "用历史观察日以前已知的订单数据，模拟系统当时会给出的推荐价，并用后续真实售出结果做静态销量回测。",
-        "en": "Simulate recommendations using only bookings known before the historical observation date, then compare them with later realized results.",
-        "de": "Simuliert Empfehlungen nur mit Buchungen, die vor dem historischen Beobachtungstag bekannt waren, und vergleicht sie mit später realisierten Ergebnissen.",
-        "fr": "Simule les recommandations uniquement avec les réservations connues avant la date d’observation historique, puis les compare aux résultats réalisés.",
+        "zh": "用历史观察日以前已知的订单数据，模拟系统当时会给出的推荐价；同时展示价格弹性模型的预期收益回测和最终实际销量的静态对照。",
+        "en": "Simulate recommendations using only bookings known before the historical observation date, then show elasticity-aware expected revenue and a static realized-volume comparison.",
+        "de": "Simuliert Empfehlungen nur mit Buchungen, die vor dem historischen Beobachtungstag bekannt waren, und zeigt erwarteten Umsatz mit Preiselastizität sowie einen statischen Ist-Volumen-Vergleich.",
+        "fr": "Simule les recommandations uniquement avec les réservations connues avant la date d’observation historique, puis affiche le revenu attendu avec élasticité-prix et une comparaison statique au volume réalisé.",
     },
     "observation_date": {"zh": "回测观察日", "en": "Backtest observation date", "de": "Backtest-Beobachtungstag", "fr": "Date d’observation"},
     "run_hint": {"zh": "系统只使用该日以前已经产生的订单作为已知信息，并对后续周期生成推荐。", "en": "The system uses only bookings already made by that date and generates recommendations for the following horizon.", "de": "Das System nutzt nur bis dahin bekannte Buchungen und erstellt Empfehlungen für den folgenden Zeitraum.", "fr": "Le système utilise uniquement les réservations déjà connues à cette date et génère des recommandations pour l’horizon suivant."},
-    "static_volume_note": {"zh": "说明：推荐引擎已使用候选价收益模拟；当前回测页面仍是假设最终售出房间数不随推荐价格变化的静态销量回测。后续应升级为带价格弹性的收益回测。", "en": "Note: the recommendation engine now uses candidate-price revenue simulation. This page is still a static-volume backtest that assumes final sold rooms do not change with the recommended price. It should later be upgraded to elasticity-aware revenue backtesting.", "de": "Hinweis: Die Empfehlungslogik nutzt nun eine Kandidatenpreis-Umsatzsimulation. Diese Seite ist weiterhin ein statischer Backtest, der annimmt, dass endgültig verkaufte Zimmer nicht auf den empfohlenen Preis reagieren. Später sollte sie zu einem preiselastizitätsbasierten Umsatz-Backtest ausgebaut werden.", "fr": "Note : le moteur de recommandation utilise désormais une simulation de revenu par prix candidat. Cette page reste un backtest à volume statique supposant que les chambres finalement vendues ne changent pas avec le prix recommandé. Elle devra ensuite évoluer vers un backtest de revenu avec élasticité-prix."},
+    "static_volume_note": {"zh": "说明：弹性收益回测是模型在观察日当时的预期结果，不等同于真实因果收益；静态销量对照保留为保守 sanity check。", "en": "Note: elasticity revenue backtesting is the model's as-of expected result, not proven causal revenue. The static-volume comparison remains as a conservative sanity check.", "de": "Hinweis: Der preiselastische Umsatz-Backtest ist die damalige Erwartung des Modells, kein bewiesener kausaler Umsatz. Der statische Volumenvergleich bleibt als konservativer Plausibilitätscheck erhalten.", "fr": "Note : le backtest de revenu avec élasticité est le résultat attendu par le modèle à la date d’observation, pas un revenu causal prouvé. La comparaison à volume statique reste un contrôle prudent."},
+    "elasticity_section": {"zh": "价格弹性收益回测", "en": "Elasticity Revenue Backtest", "de": "Umsatz-Backtest mit Preiselastizität", "fr": "Backtest de revenu avec élasticité"},
+    "static_section": {"zh": "静态实际销量对照", "en": "Static Realized-Volume Comparison", "de": "Statischer Ist-Volumen-Vergleich", "fr": "Comparaison statique au volume réalisé"},
+    "elasticity_current_revenue": {"zh": "当前价预期收益", "en": "Current Expected Revenue", "de": "Erwarteter Umsatz aktueller Preis", "fr": "Revenu attendu prix actuel"},
+    "elasticity_recommended_revenue": {"zh": "推荐价预期收益", "en": "Recommended Expected Revenue", "de": "Erwarteter Umsatz empfohlener Preis", "fr": "Revenu attendu prix recommandé"},
+    "elasticity_delta": {"zh": "弹性预期收益变化", "en": "Elasticity Expected Revenue Delta", "de": "Erwartete Umsatzänderung", "fr": "Variation de revenu attendue"},
+    "elasticity_delta_pct": {"zh": "弹性预期收益变化率", "en": "Elasticity Delta %", "de": "Erwartete Umsatzänderung %", "fr": "Variation attendue %"},
     "baseline_revenue": {"zh": "基准收入", "en": "Baseline Revenue", "de": "Basisumsatz", "fr": "Revenu de référence"},
     "recommended_revenue": {"zh": "推荐价静态收入", "en": "Recommended Static Revenue", "de": "Empfohlener statischer Umsatz", "fr": "Revenu statique recommandé"},
     "revenue_delta": {"zh": "静态收益变化", "en": "Static Revenue Delta", "de": "Statische Umsatzänderung", "fr": "Variation statique"},
     "revenue_delta_pct": {"zh": "收益变化率", "en": "Revenue Delta %", "de": "Umsatzänderung %", "fr": "Variation %"},
     "download": {"zh": "下载回测明细 Excel", "en": "Download backtest details Excel", "de": "Backtest-Details als Excel herunterladen", "fr": "Télécharger le détail Excel"},
     "details": {"zh": "回测明细", "en": "Backtest Details", "de": "Backtest-Details", "fr": "Détail du backtest"},
-    "chart": {"zh": "每日静态收益变化", "en": "Daily Static Revenue Delta", "de": "Tägliche statische Umsatzänderung", "fr": "Variation statique quotidienne"},
+    "chart": {"zh": "每日收益变化对比", "en": "Daily Revenue Delta Comparison", "de": "Täglicher Umsatzänderungsvergleich", "fr": "Comparaison quotidienne des variations"},
+    "curve": {"zh": "候选价收益曲线", "en": "Candidate Price Revenue Curve", "de": "Umsatzkurve der Kandidatenpreise", "fr": "Courbe de revenu des prix candidats"},
+    "curve_selector": {"zh": "选择曲线样本", "en": "Select curve sample", "de": "Kurvenbeispiel auswählen", "fr": "Choisir un exemple de courbe"},
+    "curve_no_data": {"zh": "当前样本无法生成候选价收益曲线。", "en": "The selected sample cannot generate a candidate-price revenue curve.", "de": "Für dieses Beispiel kann keine Kandidatenpreis-Umsatzkurve erzeugt werden.", "fr": "L’exemple sélectionné ne peut pas générer de courbe de revenu."},
     "no_data": {"zh": "当前数据不足以生成回测结果。", "en": "Not enough data to generate backtest results.", "de": "Nicht genügend Daten für Backtest-Ergebnisse.", "fr": "Données insuffisantes pour générer le backtest."},
 }
 
@@ -40,10 +50,14 @@ COLUMN_LABELS = {
     "recommended_price": {"zh": "推荐价", "en": "Recommended Price", "de": "Empfohlener Preis", "fr": "Prix recommandé"},
     "action": {"zh": "建议动作", "en": "Action", "de": "Aktion", "fr": "Action"},
     "confidence": {"zh": "置信度", "en": "Confidence", "de": "Sicherheit", "fr": "Confiance"},
+    "known_sellable_rooms": {"zh": "观察日可售库存", "en": "Known Sellable Rooms", "de": "Bekannter verkaufbarer Bestand", "fr": "Stock vendable connu"},
+    "known_room_revenue": {"zh": "观察日已锁定收入", "en": "Known Room Revenue", "de": "Bekannter Zimmerumsatz", "fr": "Revenu chambres connu"},
     "current_expected_revenue": {"zh": "观察日当前价预期收益", "en": "As-of Current Expected Revenue", "de": "Erwarteter Umsatz aktueller Preis", "fr": "Revenu attendu prix actuel"},
     "recommended_expected_revenue": {"zh": "观察日推荐价预期收益", "en": "As-of Recommended Expected Revenue", "de": "Erwarteter Umsatz empfohlener Preis", "fr": "Revenu attendu prix recommandé"},
     "demand_forecast_at_current_price": {"zh": "观察日需求预测", "en": "As-of Demand Forecast", "de": "Nachfrageprognose", "fr": "Prévision de demande"},
+    "current_expected_sold_rooms": {"zh": "当前价预计售出", "en": "Current Expected Sold Rooms", "de": "Erwartete Verkäufe aktueller Preis", "fr": "Chambres attendues prix actuel"},
     "expected_sold_rooms": {"zh": "推荐价预计售出", "en": "Recommended Expected Sold Rooms", "de": "Erwartete Verkäufe empfohlener Preis", "fr": "Chambres attendues prix recommandé"},
+    "expected_new_sold_rooms": {"zh": "推荐价预计新增售出", "en": "Recommended Expected New Sold Rooms", "de": "Erwartete neue Verkäufe", "fr": "Nouvelles ventes attendues"},
     "demand_elasticity": {"zh": "价格弹性", "en": "Price Elasticity", "de": "Preiselastizität", "fr": "Élasticité-prix"},
     "known_sold_rooms": {"zh": "观察日已售房间", "en": "Known Sold Rooms", "de": "Bekannte verkaufte Zimmer", "fr": "Chambres vendues connues"},
     "realized_sold_rooms": {"zh": "最终实际售出", "en": "Final Realized Sold Rooms", "de": "Endgültig verkaufte Zimmer", "fr": "Chambres finalement vendues"},
@@ -82,9 +96,55 @@ def _bookings_as_of(bookings: pd.DataFrame, observation_date) -> pd.DataFrame:
 def _known_snapshot(as_of_metrics: pd.DataFrame) -> pd.DataFrame:
     known = as_of_metrics.copy()
     known["stay_date"] = pd.to_datetime(known["stay_date"]).dt.date
-    return known.rename(columns={"sold_rooms": "known_sold_rooms", "occupancy": "known_occupancy"})[
-        ["hotel_id", "room_type", "stay_date", "known_sold_rooms", "known_occupancy"]
+    return known.rename(
+        columns={
+            "sellable_rooms": "known_sellable_rooms",
+            "sold_rooms": "known_sold_rooms",
+            "room_revenue": "known_room_revenue",
+            "occupancy": "known_occupancy",
+        }
+    )[
+        ["hotel_id", "room_type", "stay_date", "known_sellable_rooms", "known_sold_rooms", "known_room_revenue", "known_occupancy"]
     ]
+
+
+def _safe_sum(detail: pd.DataFrame, column: str) -> float:
+    if column not in detail.columns:
+        return 0.0
+    return float(pd.to_numeric(detail[column], errors="coerce").fillna(0).sum())
+
+
+def _curve_label(row) -> str:
+    return f"{row.stay_date} | {row.room_type} | {row.current_price:.0f} -> {row.recommended_price:.0f}"
+
+
+def _candidate_curve_from_row(row, max_change_pct: float, price_rounding_strategy: str) -> pd.DataFrame:
+    known_room_revenue = float(getattr(row, "known_room_revenue", 0) or 0)
+    if known_room_revenue <= 0:
+        known_sold_rooms = float(getattr(row, "known_sold_rooms", 0) or 0)
+        current_expected_sold = float(getattr(row, "current_expected_sold_rooms", known_sold_rooms) or known_sold_rooms)
+        current_expected_revenue = float(getattr(row, "current_expected_revenue", 0) or 0)
+        current_price = float(getattr(row, "current_price", 0) or 0)
+        known_room_revenue = current_expected_revenue - current_price * max(current_expected_sold - known_sold_rooms, 0)
+
+    curve_rows = simulate_candidate_revenue_curve(
+        current_price=float(getattr(row, "current_price", 0) or 0),
+        sellable_rooms=float(getattr(row, "known_sellable_rooms", 0) or 0),
+        known_sold_rooms=float(getattr(row, "known_sold_rooms", 0) or 0),
+        known_room_revenue=max(known_room_revenue, 0),
+        demand_forecast_at_current_price=float(getattr(row, "demand_forecast_at_current_price", 0) or 0),
+        demand_elasticity=float(getattr(row, "demand_elasticity", 0) or 0),
+        max_change_pct=max_change_pct,
+        rounding_strategy=price_rounding_strategy,
+        price_floor=getattr(row, "price_floor", None),
+        price_ceiling=getattr(row, "price_ceiling", None),
+    )
+    curve = pd.DataFrame(curve_rows)
+    if curve.empty:
+        return curve
+    curve["is_current_price"] = (curve["candidate_price"] - float(row.current_price)).abs() < 0.01
+    curve["is_recommended_price"] = (curve["candidate_price"] - float(row.recommended_price)).abs() < 0.01
+    return curve
 
 
 def run_static_backtest(metrics, bookings, current_prices, observation_date, horizon_days, max_change_pct, price_rounding_strategy, room_price_bounds=None):
@@ -117,7 +177,7 @@ def run_static_backtest(metrics, bookings, current_prices, observation_date, hor
         on=["hotel_id", "room_type", "stay_date"],
     )
 
-    fill_cols = ["known_sold_rooms", "known_occupancy", "realized_sold_rooms", "realized_occupancy", "realized_room_revenue"]
+    fill_cols = ["known_sellable_rooms", "known_sold_rooms", "known_room_revenue", "known_occupancy", "realized_sold_rooms", "realized_occupancy", "realized_room_revenue"]
     detail[fill_cols] = detail[fill_cols].fillna(0)
     detail["baseline_revenue"] = detail["current_price"].astype(float) * detail["realized_sold_rooms"].astype(float)
     detail["recommended_revenue"] = detail["recommended_price"].astype(float) * detail["realized_sold_rooms"].astype(float)
@@ -126,9 +186,16 @@ def run_static_backtest(metrics, bookings, current_prices, observation_date, hor
     baseline = float(detail["baseline_revenue"].sum())
     recommended = float(detail["recommended_revenue"].sum())
     delta = recommended - baseline
+    elasticity_current = _safe_sum(detail, "current_expected_revenue")
+    elasticity_recommended = _safe_sum(detail, "recommended_expected_revenue")
+    elasticity_delta = elasticity_recommended - elasticity_current
     return detail, {
         "rows": int(len(detail)),
         "changed_rows": int((detail["action"] != "hold").sum()),
+        "elasticity_current_revenue": elasticity_current,
+        "elasticity_recommended_revenue": elasticity_recommended,
+        "elasticity_delta": elasticity_delta,
+        "elasticity_delta_pct": elasticity_delta / elasticity_current if elasticity_current else 0.0,
         "baseline_revenue": baseline,
         "recommended_revenue": recommended,
         "revenue_delta": delta,
@@ -137,7 +204,7 @@ def run_static_backtest(metrics, bookings, current_prices, observation_date, hor
 
 
 def localized_backtest_detail(detail: pd.DataFrame, lang: str) -> pd.DataFrame:
-    columns = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price", "action", "confidence", "current_expected_revenue", "recommended_expected_revenue", "demand_forecast_at_current_price", "expected_sold_rooms", "demand_elasticity", "known_sold_rooms", "known_occupancy", "realized_sold_rooms", "realized_occupancy", "baseline_revenue", "recommended_revenue", "static_revenue_delta", "main_reasons", "risk_flags"]
+    columns = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price", "action", "confidence", "known_sellable_rooms", "known_sold_rooms", "known_room_revenue", "known_occupancy", "current_expected_revenue", "recommended_expected_revenue", "demand_forecast_at_current_price", "current_expected_sold_rooms", "expected_sold_rooms", "expected_new_sold_rooms", "demand_elasticity", "realized_sold_rooms", "realized_occupancy", "baseline_revenue", "recommended_revenue", "static_revenue_delta", "main_reasons", "risk_flags"]
     out = detail[[c for c in columns if c in detail.columns]].copy()
     if "room_type" in out.columns:
         out["room_type"] = out["room_type"].map(lambda v: translate_room_type(v, lang))
@@ -181,14 +248,49 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
         st.warning(bt_label("no_data", lang))
         return
 
+    st.subheader(bt_label("elasticity_section", lang))
+    e1, e2, e3, e4 = st.columns(4)
+    e1.metric(bt_label("elasticity_current_revenue", lang), f"{summary['elasticity_current_revenue']:,.0f}")
+    e2.metric(bt_label("elasticity_recommended_revenue", lang), f"{summary['elasticity_recommended_revenue']:,.0f}")
+    e3.metric(bt_label("elasticity_delta", lang), f"{summary['elasticity_delta']:,.0f}")
+    e4.metric(bt_label("elasticity_delta_pct", lang), f"{summary['elasticity_delta_pct']:.1%}")
+
+    daily_elasticity = detail.groupby("stay_date", as_index=False).agg(
+        elasticity_expected_revenue_delta=("expected_revenue_delta", "sum"),
+        static_revenue_delta=("static_revenue_delta", "sum"),
+    )
+    daily_long = daily_elasticity.melt(
+        id_vars="stay_date",
+        value_vars=["elasticity_expected_revenue_delta", "static_revenue_delta"],
+        var_name="metric",
+        value_name="revenue_delta",
+    )
+    daily_long["metric"] = daily_long["metric"].map(
+        {
+            "elasticity_expected_revenue_delta": bt_label("elasticity_delta", lang),
+            "static_revenue_delta": bt_label("revenue_delta", lang),
+        }
+    )
+    st.plotly_chart(px.bar(daily_long, x="stay_date", y="revenue_delta", color="metric", barmode="group", title=bt_label("chart", lang)))
+
+    st.subheader(bt_label("curve", lang))
+    curve_options = detail.copy()
+    curve_options["_curve_label"] = curve_options.apply(_curve_label, axis=1)
+    selected_curve_label = st.selectbox(bt_label("curve_selector", lang), curve_options["_curve_label"].tolist())
+    selected_curve_row = curve_options[curve_options["_curve_label"] == selected_curve_label].iloc[0]
+    curve = _candidate_curve_from_row(selected_curve_row, max_change_pct, price_rounding_strategy)
+    if curve.empty:
+        st.info(bt_label("curve_no_data", lang))
+    else:
+        st.plotly_chart(px.line(curve, x="candidate_price", y="expected_revenue", markers=True, title=bt_label("curve", lang), hover_data=["expected_sold_rooms", "expected_new_sold_rooms", "is_current_price", "is_recommended_price"]))
+
+    st.subheader(bt_label("static_section", lang))
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(bt_label("baseline_revenue", lang), f"{summary['baseline_revenue']:,.0f}")
     c2.metric(bt_label("recommended_revenue", lang), f"{summary['recommended_revenue']:,.0f}")
     c3.metric(bt_label("revenue_delta", lang), f"{summary['revenue_delta']:,.0f}")
     c4.metric(bt_label("revenue_delta_pct", lang), f"{summary['revenue_delta_pct']:.1%}")
 
-    daily = detail.groupby("stay_date", as_index=False)["static_revenue_delta"].sum()
-    st.plotly_chart(px.bar(daily, x="stay_date", y="static_revenue_delta", title=bt_label("chart", lang)))
     st.subheader(bt_label("details", lang))
     st.dataframe(localized_backtest_detail(detail, lang), width="stretch", hide_index=True)
     st.download_button(bt_label("download", lang), data=backtest_excel_bytes(detail, lang), file_name="hotel_pricing_backtest.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

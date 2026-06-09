@@ -40,6 +40,7 @@ TRANSLATIONS = {
     "high_confidence_count": {"zh": "高置信度建议", "en": "High-confidence recommendations", "de": "Empfehlungen mit hoher Sicherheit", "fr": "Recommandations à forte confiance"},
     "risk_count": {"zh": "风险提示", "en": "Risk flags", "de": "Risikohinweise", "fr": "Alertes de risque"},
     "no_priority_items": {"zh": "当前周期没有明显的重点调价机会。", "en": "No major pricing opportunities in the selected horizon.", "de": "Keine wesentlichen Preisoptimierungschancen im gewählten Zeitraum.", "fr": "Aucune opportunité tarifaire majeure sur l’horizon sélectionné."},
+    "recommendation_inventory_gap": {"zh": "有 {missing_count} 条当前价因为缺少对应库存或可售房间未生成推荐。请检查 inventory.csv 的入住日期和房型覆盖。", "en": "{missing_count} current-price rows were skipped because matching inventory or sellable rooms were missing. Check stay-date and room-type coverage in inventory.csv.", "de": "{missing_count} aktuelle Preiszeilen wurden übersprungen, weil passender Bestand oder verkaufbare Zimmer fehlen. Prüfen Sie Datum- und Zimmertyp-Abdeckung in inventory.csv.", "fr": "{missing_count} lignes de prix actuels ont été ignorées faute de stock ou de chambres vendables correspondants. Vérifiez les dates de séjour et types de chambre dans inventory.csv."},
     "column_stay_date": {"zh": "入住日期", "en": "Stay Date", "de": "Aufenthaltsdatum", "fr": "Date de séjour"},
     "column_hotel_id": {"zh": "酒店", "en": "Hotel", "de": "Hotel", "fr": "Hôtel"},
     "column_room_type": {"zh": "房型", "en": "Room Type", "de": "Zimmertyp", "fr": "Type de chambre"},

@@ -7,6 +7,33 @@ from .metrics import calculate_pickup
 from .revenue_simulation import RevenueSimulationResult, simulate_revenue_maximizing_price
 
 
+RECOMMENDATION_COLUMNS = [
+    "stay_date",
+    "hotel_id",
+    "room_type",
+    "current_price",
+    "recommended_price",
+    "price_floor",
+    "price_ceiling",
+    "action",
+    "expected_revenue_delta",
+    "current_expected_revenue",
+    "recommended_expected_revenue",
+    "demand_forecast_at_current_price",
+    "current_expected_sold_rooms",
+    "expected_sold_rooms",
+    "expected_new_sold_rooms",
+    "demand_elasticity",
+    "candidate_price_count",
+    "confidence",
+    "occupancy",
+    "remaining_inventory_ratio",
+    "pickup_14d",
+    "main_reasons",
+    "risk_flags",
+]
+
+
 def _action(current_price: float, recommended_price: float) -> str:
     change = (recommended_price - current_price) / current_price if current_price else 0
     if change > 0.03:
@@ -77,6 +104,11 @@ def generate_recommendations(
         how="left",
         on=["hotel_id", "room_type", "stay_date"],
     ).merge(pickup, how="left", on=["hotel_id", "room_type", "stay_date"])
+
+    future["sellable_rooms"] = pd.to_numeric(future["sellable_rooms"], errors="coerce")
+    future = future[future["sellable_rooms"].fillna(0) > 0].copy()
+    if future.empty:
+        return pd.DataFrame(columns=RECOMMENDATION_COLUMNS)
 
     future[["sold_rooms", "room_revenue", "pickup_7d", "pickup_14d"]] = future[["sold_rooms", "room_revenue", "pickup_7d", "pickup_14d"]].fillna(0)
     future["occupancy"] = future["occupancy"].fillna(0)
@@ -211,4 +243,6 @@ def generate_recommendations(
             }
         )
 
-    return pd.DataFrame(recommendations).sort_values(["stay_date", "room_type"])
+    if not recommendations:
+        return pd.DataFrame(columns=RECOMMENDATION_COLUMNS)
+    return pd.DataFrame(recommendations, columns=RECOMMENDATION_COLUMNS).sort_values(["stay_date", "room_type"])

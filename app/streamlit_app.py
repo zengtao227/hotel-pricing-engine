@@ -130,6 +130,14 @@ def _show_recommendation_table(df: pd.DataFrame, lang: str) -> None:
     )
 
 
+def _expected_recommendation_rows(current_prices: pd.DataFrame, observation_date, horizon_days: int) -> int:
+    prices = current_prices.copy()
+    prices["stay_date"] = pd.to_datetime(prices["stay_date"]).dt.normalize()
+    start_date = pd.to_datetime(observation_date).normalize()
+    end_date = start_date + pd.Timedelta(days=horizon_days)
+    return int(((prices["stay_date"] >= start_date) & (prices["stay_date"] <= end_date)).sum())
+
+
 def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame, overview: dict, lang: str) -> None:
     st.subheader(t("sales_dashboard", lang))
     st.write(t("summary_text", lang))
@@ -357,6 +365,9 @@ recommendations = generate_recommendations(
     price_rounding_strategy=price_rounding_strategy,
     room_price_bounds=room_price_bounds,
 )
+missing_recommendation_rows = _expected_recommendation_rows(hotel_data.current_prices, observation_date, horizon_days) - len(recommendations)
+if missing_recommendation_rows > 0:
+    st.warning(t("recommendation_inventory_gap", lang).format(missing_count=missing_recommendation_rows))
 
 overview = summarize_overview(metrics)
 
