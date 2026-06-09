@@ -65,7 +65,6 @@ def calculate_daily_metrics(bookings: pd.DataFrame, inventory: pd.DataFrame) -> 
 
     metrics = inv.merge(sold, how="left", on=["hotel_id", "room_type", "stay_date"])
     for column in ["sold_rooms", "room_revenue", "booking_count"]:
-        metrics[column] = metrics[column].fillna(0)
         metrics[column] = pd.to_numeric(metrics[column], errors="coerce").fillna(0)
 
     metrics["sellable_rooms"] = pd.to_numeric(metrics["sellable_rooms"], errors="coerce").fillna(0)
