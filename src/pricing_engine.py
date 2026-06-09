@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from .metrics import calculate_pickup
@@ -114,8 +113,6 @@ def generate_recommendations(
     future["occupancy"] = future["occupancy"].fillna(0)
 
     historical = m[m["stay_date"] < observation_date].copy()
-    if historical.empty:
-        historical = m.copy()
 
     baselines = (
         historical.groupby(["room_type", "is_weekend"], as_index=False)
@@ -175,12 +172,12 @@ def generate_recommendations(
             risk_flags.append("very close to stay date")
         if sellable_rooms <= 0:
             risk_flags.append("missing or invalid inventory")
-        if np.isnan(row.baseline_adr):
+        if pd.isna(row.baseline_adr):
             risk_flags.append("limited historical baseline")
 
-        _, min_price, max_price = _apply_price_bounds(current_price, row.room_type, room_price_bounds)
+        bounded_current_price, min_price, max_price = _apply_price_bounds(current_price, row.room_type, room_price_bounds)
         simulation: RevenueSimulationResult = simulate_revenue_maximizing_price(
-            current_price=current_price,
+            current_price=bounded_current_price,
             sellable_rooms=sellable_rooms,
             known_sold_rooms=sold_rooms,
             known_room_revenue=float(getattr(row, "room_revenue", 0) or 0),

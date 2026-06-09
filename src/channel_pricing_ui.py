@@ -103,7 +103,7 @@ def render_channel_price_preview(approval_table: pd.DataFrame, lang: str) -> Non
 
     approved = approval_table[
         (approval_table["approval_status"] == "approved")
-        & (approval_table["selected"] == True)
+        & approval_table["selected"].astype(bool)
     ].copy()
     if approved.empty:
         st.warning(_label("no_approved", lang))

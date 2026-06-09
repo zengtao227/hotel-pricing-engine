@@ -107,15 +107,20 @@ def generate_channel_prices(approved_prices: pd.DataFrame, rules: Iterable[Chann
                 "hotel_id",
                 "room_type",
                 "stay_date",
+                "approval_status",
+                "push_status",
+                "manual_override",
                 "channel_name",
                 "rate_plan_code",
                 "approved_base_price",
-                "display_price",
-                "estimated_net_revenue",
                 "combined_discount_rate",
+                "display_price",
                 "commission_rate",
-                "requires_manual_approval",
+                "commission_amount",
+                "channel_cost_fixed",
+                "estimated_net_revenue",
                 "update_frequency",
+                "requires_manual_approval",
             ]
         )
 

@@ -36,12 +36,13 @@ def load_audit_log(base_dir: str | Path = "data/audit_logs") -> pd.DataFrame:
 
 
 def append_audit_log(rows: pd.DataFrame, base_dir: str | Path = "data/audit_logs") -> pd.DataFrame:
-    existing = load_audit_log(base_dir)
     if rows is None or rows.empty:
-        return existing
-    combined = pd.concat([existing, rows.reindex(columns=AUDIT_COLUMNS)], ignore_index=True)
-    combined.to_csv(audit_log_path(base_dir), index=False)
-    return combined
+        return load_audit_log(base_dir)
+    path = audit_log_path(base_dir)
+    new_rows = rows.reindex(columns=AUDIT_COLUMNS)
+    write_header = not path.exists()
+    new_rows.to_csv(path, mode="a", index=False, header=write_header)
+    return load_audit_log(base_dir)
 
 
 def clear_audit_log(base_dir: str | Path = "data/audit_logs") -> pd.DataFrame:

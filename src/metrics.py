@@ -26,6 +26,9 @@ def expand_bookings_to_room_nights(bookings: pd.DataFrame) -> pd.DataFrame:
         status = str(getattr(row, "status", "")).lower()
         active = status in ACTIVE_STATUSES
         daily_rate = float(getattr(row, "daily_rate", 0) or 0)
+        nights_divisor = max(nights, 1)
+        gross_per_night = float(getattr(row, "gross_room_revenue", daily_rate * rooms * nights) or 0.0) / nights_divisor
+        net_per_night = float(getattr(row, "net_room_revenue", daily_rate * rooms * nights) or 0.0) / nights_divisor
 
         for offset in range(nights):
             stay_date = pd.to_datetime(getattr(row, "check_in_date")) + pd.Timedelta(days=offset)
@@ -37,8 +40,8 @@ def expand_bookings_to_room_nights(bookings: pd.DataFrame) -> pd.DataFrame:
                     "booking_date": pd.to_datetime(getattr(row, "booking_date")),
                     "stay_date": stay_date.normalize(),
                     "rooms": rooms if active else 0,
-                    "gross_room_revenue": daily_rate * rooms if active else 0.0,
-                    "net_room_revenue": daily_rate * rooms if active else 0.0,
+                    "gross_room_revenue": gross_per_night if active else 0.0,
+                    "net_room_revenue": net_per_night if active else 0.0,
                     "status": status,
                     "channel": getattr(row, "channel", None),
                 }

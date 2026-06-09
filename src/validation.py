@@ -54,17 +54,20 @@ def validate_bookings(bookings: pd.DataFrame) -> list[str]:
     if bad_checkout.any():
         errors.append(f"bookings: {int(bad_checkout.sum())} rows have check_out_date <= check_in_date")
 
-    bad_lead_time = bookings["booking_date"] > bookings["check_in_date"]
+    non_cancelled = bookings["status"].str.lower() != "cancelled"
+    bad_lead_time = non_cancelled & (bookings["booking_date"] > bookings["check_in_date"])
     if bad_lead_time.any():
         errors.append(f"bookings: {int(bad_lead_time.sum())} rows have booking_date > check_in_date")
 
-    non_positive_rate = pd.to_numeric(bookings["daily_rate"], errors="coerce") <= 0
-    if non_positive_rate.any():
-        errors.append(f"bookings: {int(non_positive_rate.sum())} rows have non-positive daily_rate")
+    daily_rate_numeric = pd.to_numeric(bookings["daily_rate"], errors="coerce")
+    invalid_rate = daily_rate_numeric.isna() | (daily_rate_numeric <= 0)
+    if invalid_rate.any():
+        errors.append(f"bookings: {int(invalid_rate.sum())} rows have invalid or non-positive daily_rate")
 
-    non_positive_rooms = pd.to_numeric(bookings["rooms"], errors="coerce") <= 0
-    if non_positive_rooms.any():
-        errors.append(f"bookings: {int(non_positive_rooms.sum())} rows have non-positive rooms")
+    rooms_numeric = pd.to_numeric(bookings["rooms"], errors="coerce")
+    invalid_rooms = rooms_numeric.isna() | (rooms_numeric <= 0)
+    if invalid_rooms.any():
+        errors.append(f"bookings: {int(invalid_rooms.sum())} rows have invalid or non-positive rooms")
 
     return errors
 

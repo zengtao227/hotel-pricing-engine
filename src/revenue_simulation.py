@@ -286,8 +286,6 @@ def simulate_revenue_maximizing_price(
     known_sold: float = max(_finite_number(known_sold_rooms), 0.0)
     remaining_capacity: float = max(sellable - known_sold, 0.0)
     known_revenue: float = _finite_number(known_room_revenue, 0.0)
-    if known_revenue <= 0 and known_sold > 0:
-        known_revenue = price * known_sold
 
     demand_forecast: float = forecast_final_demand_at_current_price(
         known_sold_rooms=known_sold,
@@ -360,7 +358,7 @@ def simulate_revenue_maximizing_price(
             best_new_sold = candidate_new_sold
 
     lower, upper = _price_range(price, max_change_pct, price_floor, price_ceiling)
-    minimum_uplift: float = max(abs(current_expected_revenue) * MIN_REVENUE_UPLIFT_PCT, 1.0)
+    minimum_uplift: float = max(abs(current_expected_revenue) * MIN_REVENUE_UPLIFT_PCT, 0.01)
     current_price_allowed: bool = _is_price_allowed(price, lower, upper)
     if current_price_allowed and best_revenue - current_expected_revenue < minimum_uplift:
         best_price = price

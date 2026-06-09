@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from hashlib import sha256
 from io import BytesIO
 
 import pandas as pd
 import streamlit as st
 
-from .i18n import LANGUAGES, t, translate_room_type
+from .i18n import t, translate_room_type
 
 
 A = {
@@ -109,7 +110,8 @@ def build_approval_table(recommendations: pd.DataFrame) -> pd.DataFrame:
 
 def approval_signature(recommendations: pd.DataFrame) -> str:
     cols = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price"]
-    return str(hash(recommendations[cols].astype(str).to_csv(index=False)))
+    content = recommendations[cols].astype(str).to_csv(index=False)
+    return sha256(content.encode()).hexdigest()[:16]
 
 
 def accept_price_changes(df: pd.DataFrame) -> pd.DataFrame:
@@ -162,7 +164,7 @@ def styled_preview(df: pd.DataFrame, lang: str):
     display = to_editor_display(df, lang)
 
     def style_row(row):
-        internal = df.iloc[row.name]
+        internal = df.loc[row.name]
         if internal["push_status"] == "pushed":
             return ["background-color: #d1e7dd"] * len(row)
         if internal["approval_status"] == "rejected":
@@ -177,7 +179,7 @@ def styled_preview(df: pd.DataFrame, lang: str):
 def simulate_push(df: pd.DataFrame, lang: str, actor: str = "demo_user") -> tuple[pd.DataFrame, pd.DataFrame]:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     out = update_manual_flags(df)
-    mask = (out["selected"] == True) & (out["approval_status"] == "approved") & (out["push_status"] != "pushed")
+    mask = out["selected"].astype(bool) & (out["approval_status"] == "approved") & (out["push_status"] != "pushed")
     rows = []
     for idx, row in out[mask].iterrows():
         out.at[idx, "push_status"] = "pushed"
