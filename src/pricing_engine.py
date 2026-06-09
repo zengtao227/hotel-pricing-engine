@@ -14,6 +14,20 @@ def _action(current_price: float, recommended_price: float) -> str:
     return "hold"
 
 
+def _apply_price_bounds(price: float, room_type: str, room_price_bounds: dict | None) -> tuple[float, float | None, float | None]:
+    if not room_price_bounds or room_type not in room_price_bounds:
+        return float(price), None, None
+    bounds = room_price_bounds[room_type]
+    min_price = float(bounds.get("min_price") or 0)
+    max_price = float(bounds.get("max_price") or 0)
+    bounded = float(price)
+    if min_price > 0:
+        bounded = max(bounded, min_price)
+    if max_price > 0:
+        bounded = min(bounded, max_price)
+    return bounded, min_price or None, max_price or None
+
+
 def generate_recommendations(
     metrics: pd.DataFrame,
     bookings: pd.DataFrame,
@@ -22,6 +36,7 @@ def generate_recommendations(
     horizon_days: int = 30,
     max_change_pct: float = 0.15,
     price_rounding_strategy: str = "chinese_lucky",
+    room_price_bounds: dict | None = None,
 ) -> pd.DataFrame:
     """Generate simple explainable rule-based price recommendations."""
     prices = current_prices.copy()
@@ -130,9 +145,14 @@ def generate_recommendations(
 
         change_pct = float(np.clip(change_pct, -max_change_pct, max_change_pct))
         raw_recommended_price = current_price * (1 + change_pct)
-        recommended_price = round_to_price_ending(raw_recommended_price, strategy=price_rounding_strategy)
+        rounded_price = round_to_price_ending(raw_recommended_price, strategy=price_rounding_strategy)
+        recommended_price, min_price, max_price = _apply_price_bounds(rounded_price, row.room_type, room_price_bounds)
         expected_revenue_delta = recommended_price * max(sold_rooms, 1) - current_price * max(sold_rooms, 1)
 
+        if min_price is not None and rounded_price < min_price:
+            risk_flags.append("price floor applied")
+        if max_price is not None and rounded_price > max_price:
+            risk_flags.append("price ceiling applied")
         if not reasons:
             reasons.append("no strong demand or inventory signal")
 
@@ -143,6 +163,8 @@ def generate_recommendations(
                 "room_type": row.room_type,
                 "current_price": current_price,
                 "recommended_price": recommended_price,
+                "price_floor": min_price,
+                "price_ceiling": max_price,
                 "action": _action(current_price, recommended_price),
                 "expected_revenue_delta": round(float(expected_revenue_delta), 2),
                 "confidence": confidence,
