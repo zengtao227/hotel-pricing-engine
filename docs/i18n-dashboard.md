@@ -13,7 +13,7 @@ Streamlit 页面右上角提供语言选择：
 
 ## 页面结构
 
-当前界面分为三个标签页：
+当前界面分为四个标签页：
 
 1. **销售演示看板**
    - 管理层摘要
@@ -30,12 +30,19 @@ Streamlit 页面右上角提供语言选择：
 2. **调价建议**
    - 支持按上调、下调、保持筛选
    - 表格字段已按当前语言翻译
+   - 房型名称已按当前语言翻译，例如中文显示为“标准大床房 / 高级大床房 / 家庭房”
    - 推荐原因和风险提示已做多语言映射
    - 关键列带有可悬停说明
    - 支持选择 Excel 导出语言
    - Excel 默认导出语言跟随当前界面语言，也可以手动改为中文、英文、德文或法文
 
-3. **数据预览**
+3. **价格审批与发布**
+   - 支持最终批准价人工修改
+   - 审批表中的房型名称按当前语言翻译
+   - 人工修改、已推送、已拒绝行会有颜色提示
+   - 支持模拟一键推送和下载审批日志
+
+4. **数据预览**
    - 订单数据
    - 库存数据
    - 当前价格数据
@@ -46,6 +53,16 @@ Streamlit 页面右上角提供语言选择：
 
 - **推荐周期**：系统为未来多少天生成调价建议。默认 30 天适合演示和日常查看；7–14 天适合关注短期销售压力；45–60 天适合月度计划，但不确定性更高。
 - **单次最大调价幅度**：限制系统单次建议的最大涨跌幅。保守建议 10%–15%；价格敏感场景可用 5%–10%；旺季或库存紧张时可临时提高到 20%–30%，但仍应人工复核。
+
+## 房型翻译
+
+内置 demo 房型目前支持中英德法翻译：
+
+- `Standard Double`：标准大床房 / Standard Double / Standard-Doppelzimmer / Chambre double standard
+- `Superior Double`：高级大床房 / Superior Double / Superior-Doppelzimmer / Chambre double supérieure
+- `Family Room`：家庭房 / Family Room / Familienzimmer / Chambre familiale
+
+如果将来客户上传自定义房型，系统会优先保留客户原始房型名称。可以在 `src/i18n.py` 中扩展 `ROOM_TYPES` 映射。
 
 ## 指标解释
 
@@ -70,13 +87,14 @@ Excel 工作簿包含两个 sheet：
 1. 调价建议 / Price Recommendations / Preisempfehlungen / Recommandations
 2. 每日指标 / Daily Metrics / Tageskennzahlen / Indicateurs journaliers
 
-调价建议 sheet 会本地化字段名、建议动作、置信度、推荐原因和风险提示。每日指标 sheet 会本地化字段名。
+调价建议 sheet 会本地化字段名、房型名称、建议动作、置信度、推荐原因和风险提示。每日指标 sheet 会本地化字段名和房型名称。
 
 ## 技术实现
 
-- `src/i18n.py`：集中保存多语言文案、字段名映射、推荐原因和风险提示翻译。
+- `src/i18n.py`：集中保存多语言文案、房型名称映射、字段名映射、推荐原因和风险提示翻译。
 - `src/ui_help.py`：集中保存多语言参数说明、指标解释和表格列 help 配置。
 - `src/report_export.py`：负责生成多语言 Excel 报表。
+- `src/approval_workflow.py`：负责价格审批与发布流程，并在审批表中显示本地化房型名称。
 - `app/streamlit_app.py`：负责页面布局、语言选择、销售演示看板、表格展示、导出语言选择和 tooltip 接入。
 
 ## VPS 更新步骤
