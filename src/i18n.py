@@ -81,76 +81,42 @@ TRANSLATIONS = {
     "column_risk_flags": {"zh": "风险提示", "en": "Risk Flags", "de": "Risikohinweise", "fr": "Alertes de risque"},
 }
 
-REASONS = {
-    "weekend demand pattern": {
-        "zh": "周末需求较强",
-        "en": "Weekend demand pattern",
-        "de": "Wochenendnachfrage",
-        "fr": "Demande de week-end",
+ROOM_TYPES = {
+    "Standard Double": {
+        "zh": "标准大床房",
+        "en": "Standard Double",
+        "de": "Standard-Doppelzimmer",
+        "fr": "Chambre double standard",
     },
-    "occupancy above similar historical dates": {
-        "zh": "入住率高于历史类似日期",
-        "en": "Occupancy above similar historical dates",
-        "de": "Auslastung über ähnlichen historischen Tagen",
-        "fr": "Occupation supérieure aux dates historiques similaires",
+    "Superior Double": {
+        "zh": "高级大床房",
+        "en": "Superior Double",
+        "de": "Superior-Doppelzimmer",
+        "fr": "Chambre double supérieure",
     },
-    "occupancy below similar historical dates": {
-        "zh": "入住率低于历史类似日期",
-        "en": "Occupancy below similar historical dates",
-        "de": "Auslastung unter ähnlichen historischen Tagen",
-        "fr": "Occupation inférieure aux dates historiques similaires",
-    },
-    "recent 14-day pickup is strong": {
-        "zh": "最近14天新增预订较强",
-        "en": "Recent 14-day pickup is strong",
-        "de": "Starker Pickup in den letzten 14 Tagen",
-        "fr": "Pickup récent sur 14 jours élevé",
-    },
-    "weak recent pickup close to arrival": {
-        "zh": "临近入住但近期新增预订偏弱",
-        "en": "Weak recent pickup close to arrival",
-        "de": "Schwacher Pickup kurz vor Anreise",
-        "fr": "Pickup faible proche de l’arrivée",
-    },
-    "remaining inventory is limited": {
-        "zh": "剩余库存有限",
-        "en": "Remaining inventory is limited",
-        "de": "Begrenzter Restbestand",
-        "fr": "Stock restant limité",
-    },
-    "high remaining inventory close to arrival": {
-        "zh": "临近入住但剩余库存较高",
-        "en": "High remaining inventory close to arrival",
-        "de": "Hoher Restbestand kurz vor Anreise",
-        "fr": "Stock restant élevé proche de l’arrivée",
-    },
-    "no strong demand or inventory signal": {
-        "zh": "暂无强需求或库存信号",
-        "en": "No strong demand or inventory signal",
-        "de": "Kein starkes Nachfrage- oder Bestandssignal",
-        "fr": "Aucun signal fort de demande ou de stock",
+    "Family Room": {
+        "zh": "家庭房",
+        "en": "Family Room",
+        "de": "Familienzimmer",
+        "fr": "Chambre familiale",
     },
 }
 
+REASONS = {
+    "weekend demand pattern": {"zh": "周末需求较强", "en": "Weekend demand pattern", "de": "Wochenendnachfrage", "fr": "Demande de week-end"},
+    "occupancy above similar historical dates": {"zh": "入住率高于历史类似日期", "en": "Occupancy above similar historical dates", "de": "Auslastung über ähnlichen historischen Tagen", "fr": "Occupation supérieure aux dates historiques similaires"},
+    "occupancy below similar historical dates": {"zh": "入住率低于历史类似日期", "en": "Occupancy below similar historical dates", "de": "Auslastung unter ähnlichen historischen Tagen", "fr": "Occupation inférieure aux dates historiques similaires"},
+    "recent 14-day pickup is strong": {"zh": "最近14天新增预订较强", "en": "Recent 14-day pickup is strong", "de": "Starker Pickup in den letzten 14 Tagen", "fr": "Pickup récent sur 14 jours élevé"},
+    "weak recent pickup close to arrival": {"zh": "临近入住但近期新增预订偏弱", "en": "Weak recent pickup close to arrival", "de": "Schwacher Pickup kurz vor Anreise", "fr": "Pickup faible proche de l’arrivée"},
+    "remaining inventory is limited": {"zh": "剩余库存有限", "en": "Remaining inventory is limited", "de": "Begrenzter Restbestand", "fr": "Stock restant limité"},
+    "high remaining inventory close to arrival": {"zh": "临近入住但剩余库存较高", "en": "High remaining inventory close to arrival", "de": "Hoher Restbestand kurz vor Anreise", "fr": "Stock restant élevé proche de l’arrivée"},
+    "no strong demand or inventory signal": {"zh": "暂无强需求或库存信号", "en": "No strong demand or inventory signal", "de": "Kein starkes Nachfrage- oder Bestandssignal", "fr": "Aucun signal fort de demande ou de stock"},
+}
+
 RISKS = {
-    "very close to stay date": {
-        "zh": "非常接近入住日期",
-        "en": "Very close to stay date",
-        "de": "Sehr nah am Aufenthaltstag",
-        "fr": "Très proche de la date de séjour",
-    },
-    "missing or invalid inventory": {
-        "zh": "库存缺失或无效",
-        "en": "Missing or invalid inventory",
-        "de": "Fehlender oder ungültiger Bestand",
-        "fr": "Stock manquant ou invalide",
-    },
-    "limited historical baseline": {
-        "zh": "历史基准数据有限",
-        "en": "Limited historical baseline",
-        "de": "Begrenzte historische Basis",
-        "fr": "Référence historique limitée",
-    },
+    "very close to stay date": {"zh": "非常接近入住日期", "en": "Very close to stay date", "de": "Sehr nah am Aufenthaltstag", "fr": "Très proche de la date de séjour"},
+    "missing or invalid inventory": {"zh": "库存缺失或无效", "en": "Missing or invalid inventory", "de": "Fehlender oder ungültiger Bestand", "fr": "Stock manquant ou invalide"},
+    "limited historical baseline": {"zh": "历史基准数据有限", "en": "Limited historical baseline", "de": "Begrenzte historische Basis", "fr": "Référence historique limitée"},
 }
 
 COLUMN_KEYS = {
@@ -180,6 +146,17 @@ def translate_value(value, lang: str = "zh"):
     return value
 
 
+def translate_room_type(value, lang: str = "zh") -> str:
+    return ROOM_TYPES.get(str(value), {}).get(lang) or ROOM_TYPES.get(str(value), {}).get("en") or value
+
+
+def localize_room_type_values(df, lang: str = "zh"):
+    localized = df.copy()
+    if "room_type" in localized.columns:
+        localized["room_type"] = localized["room_type"].map(lambda value: translate_room_type(value, lang))
+    return localized
+
+
 def translate_reason_list(text: str, lang: str = "zh") -> str:
     if not text:
         return ""
@@ -196,6 +173,8 @@ def translate_risk_list(text: str, lang: str = "zh") -> str:
 
 def localized_recommendations(df, lang: str = "zh"):
     localized = df.copy()
+    if "room_type" in localized.columns:
+        localized["room_type"] = localized["room_type"].map(lambda value: translate_room_type(value, lang))
     if "action" in localized.columns:
         localized["action"] = localized["action"].map(lambda value: translate_value(value, lang))
     if "confidence" in localized.columns:
