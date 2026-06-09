@@ -3,6 +3,8 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
+from .price_rounding import round_to_price_ending
+
 
 ROOMS_BY_TYPE = {
     "Standard Double": 40,
@@ -10,11 +12,16 @@ ROOMS_BY_TYPE = {
     "Family Room": 12,
 }
 
+# Demo listed prices use China-friendly hotel price endings such as 168, 188, 268.
 BASE_PRICES = {
-    "Standard Double": 115,
-    "Superior Double": 145,
-    "Family Room": 185,
+    "Standard Double": 168,
+    "Superior Double": 188,
+    "Family Room": 268,
 }
+
+
+def _listed_price(base_price: float, weekend_uplift: float = 0) -> float:
+    return round_to_price_ending(base_price + weekend_uplift, strategy="chinese_lucky")
 
 
 def build_demo_data(seed: int = 42):
@@ -50,7 +57,7 @@ def build_demo_data(seed: int = 42):
                     "hotel_id": hotel_id,
                     "room_type": room_type,
                     "stay_date": stay_date.date(),
-                    "current_price": base_price + weekend_uplift,
+                    "current_price": _listed_price(base_price, weekend_uplift),
                 }
             )
     current_prices = pd.DataFrame(price_rows)
@@ -72,7 +79,11 @@ def build_demo_data(seed: int = 42):
                 booking_date = stay_date.date() - timedelta(days=lead_time)
                 nights = int(rng.choice([1, 1, 2, 2, 3], p=[0.45, 0.2, 0.2, 0.1, 0.05]))
                 check_out_date = stay_date.date() + timedelta(days=nights)
-                daily_rate = BASE_PRICES[room_type] + (20 if stay_date.weekday() >= 5 else 0) + int(rng.normal(0, 8))
+                weekend_uplift = 20 if stay_date.weekday() >= 5 else 0
+                daily_rate = round_to_price_ending(
+                    BASE_PRICES[room_type] + weekend_uplift + int(rng.normal(0, 8)),
+                    strategy="chinese_lucky",
+                )
                 cancelled = rng.random() < (0.17 if lead_time > 30 else 0.08)
                 status = "cancelled" if cancelled else ("stayed" if stay_date.date() < observation_date else "confirmed")
                 gross_revenue = daily_rate * rooms * nights
