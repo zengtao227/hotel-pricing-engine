@@ -23,7 +23,14 @@ from src.approval_workflow import (
     to_editor_display,
     update_manual_flags,
 )
-from src.data_loader import load_demo_data, load_hotel_data
+from src.data_loader import HotelData, load_demo_data, load_hotel_data
+from src.hotel_config import (
+    apply_config_to_current_prices,
+    ensure_hotel_config,
+    label as hotel_config_label,
+    render_hotel_configuration,
+    room_bounds_from_config,
+)
 from src.i18n import LANGUAGES, localized_recommendations, t
 from src.metrics import calculate_daily_metrics, summarize_overview
 from src.price_rounding import PRICE_ROUNDING_STRATEGIES
@@ -50,10 +57,10 @@ PRICE_ROUNDING_LABELS = {
 }
 
 PRICE_ROUNDING_HELP = {
-    "zh": "把算法计算出的原始推荐价转换成更像酒店挂牌价的数字。中国演示建议使用 6/8/9 尾数，例如 168、188、269；欧美场景可用按 5 或按 1 取整。",
-    "en": "Converts raw algorithmic recommendations into market-friendly displayed prices. For China demos, use 6/8/9 endings such as 168, 188 or 269. For western demos, nearest 5 or nearest 1 may be more suitable.",
-    "de": "Wandelt rohe algorithmische Empfehlungen in marktübliche angezeigte Preise um. Für China-Demos 6/8/9-Endungen wie 168, 188 oder 269 verwenden; für westliche Demos eher auf 5 oder 1 runden.",
-    "fr": "Convertit les recommandations brutes en prix affichés plus naturels. Pour une démonstration Chine, utilisez les terminaisons 6/8/9 comme 168, 188 ou 269. Pour l’Europe, l’arrondi à 5 ou à 1 peut être plus adapté.",
+    "zh": "把算法计算出的原始推荐价转换成更像酒店挂牌价的数字。中国演示建议使用 6/8/9 尾数，例如 388、468、588；欧美场景可用按 5 或按 1 取整。",
+    "en": "Converts raw algorithmic recommendations into market-friendly displayed prices. For China demos, use 6/8/9 endings such as 388, 468 or 588. For western demos, nearest 5 or nearest 1 may be more suitable.",
+    "de": "Wandelt rohe algorithmische Empfehlungen in marktübliche angezeigte Preise um. Für China-Demos 6/8/9-Endungen wie 388, 468 oder 588 verwenden; für westliche Demos eher auf 5 oder 1 runden.",
+    "fr": "Convertit les recommandations brutes en prix affichés plus naturels. Pour une démonstration Chine, utilisez les terminaisons 6/8/9 comme 388, 468 ou 588. Pour l’Europe, l’arrondi à 5 ou à 1 peut être plus adapté.",
 }
 
 
@@ -264,6 +271,8 @@ with header_left:
     st.title(t("app_title", lang))
     st.caption(t("app_caption", lang))
 
+hotel_config = ensure_hotel_config()
+
 with st.sidebar:
     st.header(t("configuration", lang))
     st.subheader(t("data", lang))
@@ -279,7 +288,7 @@ with st.sidebar:
         t("recommendation_horizon", lang),
         min_value=7,
         max_value=60,
-        value=30,
+        value=int(hotel_config.get("default_horizon_days", 30)),
         step=7,
         help=h("recommendation_horizon_help", lang),
     )
@@ -287,15 +296,17 @@ with st.sidebar:
         t("max_price_change", lang),
         min_value=0.05,
         max_value=0.30,
-        value=0.15,
+        value=float(hotel_config.get("default_max_change_pct", 0.15)),
         step=0.05,
         help=h("max_price_change_help", lang),
     )
+    rounding_keys = list(PRICE_ROUNDING_STRATEGIES.keys())
+    default_rounding = hotel_config.get("default_price_rounding_strategy", "chinese_lucky")
     price_rounding_strategy = st.selectbox(
         PRICE_ROUNDING_LABELS.get(lang, PRICE_ROUNDING_LABELS["en"]),
-        options=list(PRICE_ROUNDING_STRATEGIES.keys()),
+        options=rounding_keys,
         format_func=lambda key: PRICE_ROUNDING_STRATEGIES[key].get(lang, PRICE_ROUNDING_STRATEGIES[key]["en"]),
-        index=0,
+        index=rounding_keys.index(default_rounding) if default_rounding in rounding_keys else 0,
         help=PRICE_ROUNDING_HELP.get(lang, PRICE_ROUNDING_HELP["en"]),
     )
 
@@ -310,6 +321,17 @@ try:
 except Exception as exc:
     st.error(f"{t('load_error', lang)}: {exc}")
     st.stop()
+
+effective_current_prices = apply_config_to_current_prices(
+    hotel_data.current_prices,
+    hotel_config,
+    price_rounding_strategy,
+)
+hotel_data = HotelData(
+    bookings=hotel_data.bookings,
+    inventory=hotel_data.inventory,
+    current_prices=effective_current_prices,
+)
 
 validation_errors = validate_all(hotel_data.bookings, hotel_data.inventory, hotel_data.current_prices)
 if validation_errors:
@@ -329,12 +351,19 @@ recommendations = generate_recommendations(
     horizon_days=horizon_days,
     max_change_pct=max_change_pct,
     price_rounding_strategy=price_rounding_strategy,
+    room_price_bounds=room_bounds_from_config(hotel_config),
 )
 
 overview = summarize_overview(metrics)
 
-tab_dashboard, tab_recommendations, tab_approval, tab_data = st.tabs(
-    [t("sales_dashboard", lang), t("recommendations", lang), alabel("tab", lang), t("data_preview", lang)]
+tab_dashboard, tab_recommendations, tab_approval, tab_config, tab_data = st.tabs(
+    [
+        t("sales_dashboard", lang),
+        t("recommendations", lang),
+        alabel("tab", lang),
+        hotel_config_label("tab", lang),
+        t("data_preview", lang),
+    ]
 )
 
 with tab_dashboard:
@@ -352,6 +381,9 @@ with tab_recommendations:
 
 with tab_approval:
     render_price_approval_publishing(recommendations, lang)
+
+with tab_config:
+    hotel_config = render_hotel_configuration(hotel_config, lang)
 
 with tab_data:
     render_data_preview(hotel_data, lang)
