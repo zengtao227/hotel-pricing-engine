@@ -5,7 +5,7 @@ owner: zengtao227
 language: zh-CN
 primary_goal: 酒店房间动态定价与收益优化
 created_at: 2026-06-08
-updated_at: 2026-06-08
+updated_at: 2026-06-09
 ---
 
 # Project Context
@@ -27,14 +27,14 @@ updated_at: 2026-06-08
 - `取消率`: 已确认订单后续取消的比例
 - `推荐价`: 系统建议人工审核的价格
 
-## 当前状态（2026-06-08）
+## 当前状态（2026-06-09）
 
-MVP 已可运行。Streamlit 应用部署在 Frankfurt VPS，通过 Caddy 反代提供 HTTPS 访问。
+MVP 已可运行。Streamlit 应用部署在 Frankfurt VPS，通过 systemd 托管，并由 Caddy 反代提供 HTTPS 访问。
 详细部署说明见 `docs/deployment.md`。
 
-访问地址：`https://hotel.zengsg.dpdns.org`（DNS 传播中，预计 1–24 小时内生效）
+访问地址：`https://hotel.zengsg.dpdns.org`
 域名：zengsg.dpdns.org（DigitalPlat，有效期至 2027-06-08，Cloudflare 托管）
-认证：HTTP Basic Auth，账号 `admin`
+认证：当前未启用 HTTP Basic Auth；如需公开演示外的长期开放访问，应补充更完整的认证机制。
 
 ## 当前目标
 

@@ -4,20 +4,38 @@
 
 - **服务器**：Frankfurt VPS（89.168.80.38，Oracle Cloud ARM A1）
 - **项目路径**：`/data/projects/hotel-pricing-engine`
-- **访问地址**：`https://hotel.zengsg.dpdns.org`（DNS 传播中，预计 1–24 小时内生效）
-- **认证**：HTTP Basic Auth，账号 `admin`，密码见私密渠道（不存 GitHub）
+- **访问地址**：`https://hotel.zengsg.dpdns.org`
+- **运行方式**：systemd 服务 `hotel-pricing-engine.service`
+- **认证**：当前未启用 HTTP Basic Auth
 
-## 启动 Streamlit
+## systemd 服务
+
+服务文件：`/etc/systemd/system/hotel-pricing-engine.service`
+
+当前启动命令：
 
 ```bash
-cd /data/projects/hotel-pricing-engine
-nohup python3 -m streamlit run app/streamlit_app.py \
-    --server.port 8501 \
-    --server.address 127.0.0.1 \
-    --server.headless true > /tmp/hotel-pricing.log 2>&1 &
+/usr/bin/python3 -m streamlit run app/streamlit_app.py \
+  --server.port 8501 \
+  --server.address 127.0.0.1 \
+  --server.headless true
 ```
 
-查看日志：`tail -f /tmp/hotel-pricing.log`
+常用操作：
+
+```bash
+sudo systemctl status hotel-pricing-engine --no-pager
+sudo systemctl restart hotel-pricing-engine
+sudo journalctl -u hotel-pricing-engine -n 80 --no-pager
+```
+
+开机自启：
+
+```bash
+sudo systemctl enable hotel-pricing-engine
+```
+
+服务设置了 `Restart=always`，进程异常退出后会自动拉起。Streamlit 只监听 `127.0.0.1:8501`，不直接暴露公网。
 
 ## 域名与 DNS 配置
 
@@ -37,7 +55,7 @@ nohup python3 -m streamlit run app/streamlit_app.py \
 
 | 子域名 | 用途 | 状态 |
 |--------|------|------|
-| `hotel.zengsg.dpdns.org` | 酒店定价 MVP | 待添加 A 记录 |
+| `hotel.zengsg.dpdns.org` | 酒店定价 MVP | 已启用 |
 
 > 其他项目子域名（如 `panel.zengsg.dpdns.org`、`audit.zengsg.dpdns.org`）可按需在 Cloudflare 添加，不需要重新注册域名。
 
@@ -52,13 +70,10 @@ nohup python3 -m streamlit run app/streamlit_app.py \
 
 配置文件：`/etc/caddy/Caddyfile`
 
-当前 hotel 条目（域名待更新为 `hotel.zengsg.dpdns.org`）：
+当前 hotel 条目：
 
 ```
 hotel.zengsg.dpdns.org {
-    basic_auth {
-        admin <bcrypt-hash>
-    }
     reverse_proxy localhost:8501
 }
 ```
@@ -68,13 +83,7 @@ hotel.zengsg.dpdns.org {
 sudo systemctl reload caddy
 ```
 
-修改密码：
-```bash
-caddy hash-password --plaintext <新密码>
-# 将输出的哈希替换 /etc/caddy/Caddyfile 中的旧哈希
-sudo systemctl reload caddy
-```
-> 密码本身不要写进文档或提交到 GitHub。
+如未来需要重新启用访问保护，优先评估完整认证方案；短期演示保护可使用 Caddy `basic_auth`，但密码本身不要写进文档或提交到 GitHub。
 
 ---
 
@@ -94,7 +103,8 @@ sudo systemctl reload caddy
 
 - Streamlit 只监听 `127.0.0.1:8501`，不直接对外暴露
 - 对外访问统一通过 Caddy（80/443 端口）
-- Basic Auth 提供基本的访问保护，适合演示阶段；正式产品应换成更完善的认证机制
+- 当前未启用 Basic Auth；正式产品应补充更完善的认证机制
+- 应用由 systemd 托管，VPS 重启后会自动恢复
 - 不要将 `.env` 或包含真实客户数据的文件提交到 GitHub
 
 ### 3. 竞品参考
@@ -109,9 +119,7 @@ sudo systemctl reload caddy
 
 ## 下一步计划
 
-1. 在 Cloudflare 添加 A 记录（hotel.zengsg.dpdns.org → 89.168.80.38）
-2. 更新 Caddyfile 中的域名为 `hotel.zengsg.dpdns.org`，reload Caddy
-3. 等待 DNS 传播（1–24 小时），验证 HTTPS 访问正常
-4. 用 Demo 数据完成第一次完整演示验证
-5. 确认是否有真实酒店数据可接入，或继续使用模拟数据
-6. 如需向中国客户演示，评估是否迁移到 Tokyo VPS 或国内服务器
+1. 用 Demo 数据完成第一次完整演示验证
+2. 确认是否有真实酒店数据可接入，或继续使用模拟数据
+3. 如需向中国客户演示，评估是否迁移到 Tokyo VPS 或国内服务器
+4. 为长期开放访问补充正式认证机制
