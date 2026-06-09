@@ -1,35 +1,15 @@
-LANGUAGES = {
-    "zh": "中文",
-    "en": "English",
-    "de": "Deutsch",
-    "fr": "Français",
-}
+LANGUAGES = {"zh": "中文", "en": "English", "de": "Deutsch", "fr": "Français"}
 
 TRANSLATIONS = {
-    "app_title": {
-        "zh": "酒店收益管理与智能调价助手",
-        "en": "Hotel Revenue & Pricing Assistant",
-        "de": "Hotel Revenue- und Preisassistent",
-        "fr": "Assistant de revenu et de tarification hôtelière",
-    },
-    "app_caption": {
-        "zh": "上传酒店订单数据，查看关键收益指标，并生成可解释的房价建议。",
-        "en": "Upload hotel booking data, review revenue KPIs, and generate explainable room-price recommendations.",
-        "de": "Laden Sie Hotelbuchungsdaten hoch, prüfen Sie Revenue-KPIs und erhalten Sie erklärbare Preisempfehlungen.",
-        "fr": "Importez les données de réservation, suivez les indicateurs clés et générez des recommandations tarifaires explicables.",
-    },
+    "app_title": {"zh": "酒店收益管理与智能调价助手", "en": "Hotel Revenue & Pricing Assistant", "de": "Hotel Revenue- und Preisassistent", "fr": "Assistant de revenu et de tarification hôtelière"},
+    "app_caption": {"zh": "上传酒店订单数据，查看关键收益指标，并生成可解释的房价建议。", "en": "Upload hotel booking data, review revenue KPIs, and generate explainable room-price recommendations.", "de": "Laden Sie Hotelbuchungsdaten hoch, prüfen Sie Revenue-KPIs und erhalten Sie erklärbare Preisempfehlungen.", "fr": "Importez les données de réservation, suivez les indicateurs clés et générez des recommandations tarifaires explicables."},
     "language": {"zh": "语言", "en": "Language", "de": "Sprache", "fr": "Langue"},
     "configuration": {"zh": "配置", "en": "Configuration", "de": "Konfiguration", "fr": "Configuration"},
     "data": {"zh": "数据", "en": "Data", "de": "Daten", "fr": "Données"},
     "use_demo_data": {"zh": "使用内置演示数据", "en": "Use bundled demo data", "de": "Demo-Daten verwenden", "fr": "Utiliser les données de démonstration"},
     "recommendation_horizon": {"zh": "推荐周期", "en": "Recommendation horizon", "de": "Empfehlungszeitraum", "fr": "Horizon de recommandation"},
     "max_price_change": {"zh": "单次最大调价幅度", "en": "Max one-time price change", "de": "Maximale einmalige Preisänderung", "fr": "Variation tarifaire maximale"},
-    "upload_hint": {
-        "zh": "请上传三个 CSV 文件，或打开内置演示数据。",
-        "en": "Upload all three CSV files or switch on bundled demo data.",
-        "de": "Laden Sie alle drei CSV-Dateien hoch oder aktivieren Sie die Demo-Daten.",
-        "fr": "Importez les trois fichiers CSV ou activez les données de démonstration.",
-    },
+    "upload_hint": {"zh": "请上传三个 CSV 文件，或打开内置演示数据。", "en": "Upload all three CSV files or switch on bundled demo data.", "de": "Laden Sie alle drei CSV-Dateien hoch oder aktivieren Sie die Demo-Daten.", "fr": "Importez les trois fichiers CSV ou activez les données de démonstration."},
     "load_error": {"zh": "无法加载数据", "en": "Could not load data", "de": "Daten konnten nicht geladen werden", "fr": "Impossible de charger les données"},
     "validation_failed": {"zh": "数据校验失败。", "en": "Data validation failed.", "de": "Datenvalidierung fehlgeschlagen.", "fr": "Échec de la validation des données."},
     "sales_dashboard": {"zh": "销售演示看板", "en": "Sales Demo Dashboard", "de": "Vertriebs-Demo-Dashboard", "fr": "Tableau de bord de démonstration commerciale"},
@@ -40,13 +20,7 @@ TRANSLATIONS = {
     "occupancy": {"zh": "入住率", "en": "Occupancy", "de": "Auslastung", "fr": "Taux d’occupation"},
     "adr": {"zh": "平均房价 ADR", "en": "ADR", "de": "ADR", "fr": "ADR"},
     "revpar": {"zh": "RevPAR", "en": "RevPAR", "de": "RevPAR", "fr": "RevPAR"},
-    "executive_summary": {"zh": "管理层摘要", "en": "Executive Summary", "de": "Management-Zusammenfassung", "fr": "Résumé exécutif"},
-    "summary_text": {
-        "zh": "系统已根据历史订单、库存、当前价格和近期 pickup 生成未来周期的人工复核调价建议。重点关注上调/下调日期、低置信度建议和临近入住日期的库存压力。",
-        "en": "The system generated human-review pricing recommendations for the selected future horizon using historical bookings, inventory, current prices and recent pickup. Focus on price changes, low-confidence recommendations and inventory pressure close to arrival.",
-        "de": "Das System hat für den gewählten Zeitraum Preisempfehlungen zur manuellen Prüfung auf Basis historischer Buchungen, Bestände, aktueller Preise und jüngstem Pickup erstellt. Achten Sie besonders auf Preisänderungen, Empfehlungen mit niedriger Sicherheit und kurzfristigen Bestandsdruck.",
-        "fr": "Le système a généré des recommandations tarifaires à valider manuellement à partir des réservations historiques, des stocks, des prix actuels et du pickup récent. Priorité aux changements de prix, aux recommandations peu sûres et à la pression de stock proche de l’arrivée.",
-    },
+    "summary_text": {"zh": "系统已根据历史订单、库存、当前价格和近期 pickup 生成未来周期的人工复核调价建议。重点关注上调/下调日期、低置信度建议和临近入住日期的库存压力。", "en": "The system generated human-review pricing recommendations for the selected future horizon using historical bookings, inventory, current prices and recent pickup. Focus on price changes, low-confidence recommendations and inventory pressure close to arrival.", "de": "Das System hat für den gewählten Zeitraum Preisempfehlungen zur manuellen Prüfung auf Basis historischer Buchungen, Bestände, aktueller Preise und jüngstem Pickup erstellt. Achten Sie besonders auf Preisänderungen, Empfehlungen mit niedriger Sicherheit und kurzfristigen Bestandsdruck.", "fr": "Le système a généré des recommandations tarifaires à valider manuellement à partir des réservations historiques, des stocks, des prix actuels et du pickup récent. Priorité aux changements de prix, aux recommandations peu sûres et à la pression de stock proche de l’arrivée."},
     "pricing_actions": {"zh": "调价动作分布", "en": "Pricing Actions", "de": "Preisaktionen", "fr": "Actions tarifaires"},
     "top_opportunities": {"zh": "重点机会与风险", "en": "Top Opportunities & Risks", "de": "Wichtigste Chancen und Risiken", "fr": "Principales opportunités et risques"},
     "revpar_trend": {"zh": "RevPAR 趋势", "en": "RevPAR Trend", "de": "RevPAR-Trend", "fr": "Tendance RevPAR"},
@@ -71,6 +45,8 @@ TRANSLATIONS = {
     "column_room_type": {"zh": "房型", "en": "Room Type", "de": "Zimmertyp", "fr": "Type de chambre"},
     "column_current_price": {"zh": "当前价", "en": "Current Price", "de": "Aktueller Preis", "fr": "Prix actuel"},
     "column_recommended_price": {"zh": "推荐价", "en": "Recommended Price", "de": "Empfohlener Preis", "fr": "Prix recommandé"},
+    "column_price_floor": {"zh": "最低价", "en": "Price Floor", "de": "Mindestpreis", "fr": "Prix minimum"},
+    "column_price_ceiling": {"zh": "最高价", "en": "Price Ceiling", "de": "Höchstpreis", "fr": "Prix maximum"},
     "column_action": {"zh": "建议动作", "en": "Action", "de": "Aktion", "fr": "Action"},
     "column_expected_revenue_delta": {"zh": "预计收益变化", "en": "Expected Revenue Delta", "de": "Erwartete Umsatzänderung", "fr": "Variation de revenu estimée"},
     "column_confidence": {"zh": "置信度", "en": "Confidence", "de": "Sicherheit", "fr": "Confiance"},
@@ -82,24 +58,9 @@ TRANSLATIONS = {
 }
 
 ROOM_TYPES = {
-    "Standard Double": {
-        "zh": "标准大床房",
-        "en": "Standard Double",
-        "de": "Standard-Doppelzimmer",
-        "fr": "Chambre double standard",
-    },
-    "Superior Double": {
-        "zh": "高级大床房",
-        "en": "Superior Double",
-        "de": "Superior-Doppelzimmer",
-        "fr": "Chambre double supérieure",
-    },
-    "Family Room": {
-        "zh": "家庭房",
-        "en": "Family Room",
-        "de": "Familienzimmer",
-        "fr": "Chambre familiale",
-    },
+    "Standard Double": {"zh": "标准大床房", "en": "Standard Double", "de": "Standard-Doppelzimmer", "fr": "Chambre double standard"},
+    "Superior Double": {"zh": "高级大床房", "en": "Superior Double", "de": "Superior-Doppelzimmer", "fr": "Chambre double supérieure"},
+    "Family Room": {"zh": "家庭房", "en": "Family Room", "de": "Familienzimmer", "fr": "Chambre familiale"},
 }
 
 REASONS = {
@@ -117,22 +78,17 @@ RISKS = {
     "very close to stay date": {"zh": "非常接近入住日期", "en": "Very close to stay date", "de": "Sehr nah am Aufenthaltstag", "fr": "Très proche de la date de séjour"},
     "missing or invalid inventory": {"zh": "库存缺失或无效", "en": "Missing or invalid inventory", "de": "Fehlender oder ungültiger Bestand", "fr": "Stock manquant ou invalide"},
     "limited historical baseline": {"zh": "历史基准数据有限", "en": "Limited historical baseline", "de": "Begrenzte historische Basis", "fr": "Référence historique limitée"},
+    "price floor applied": {"zh": "已应用最低价保护", "en": "Price floor applied", "de": "Mindestpreis angewendet", "fr": "Prix minimum appliqué"},
+    "price ceiling applied": {"zh": "已应用最高价保护", "en": "Price ceiling applied", "de": "Höchstpreis angewendet", "fr": "Prix maximum appliqué"},
 }
 
 COLUMN_KEYS = {
-    "stay_date": "column_stay_date",
-    "hotel_id": "column_hotel_id",
-    "room_type": "column_room_type",
-    "current_price": "column_current_price",
-    "recommended_price": "column_recommended_price",
-    "action": "column_action",
-    "expected_revenue_delta": "column_expected_revenue_delta",
-    "confidence": "column_confidence",
-    "occupancy": "column_occupancy",
-    "remaining_inventory_ratio": "column_remaining_inventory_ratio",
-    "pickup_14d": "column_pickup_14d",
-    "main_reasons": "column_main_reasons",
-    "risk_flags": "column_risk_flags",
+    "stay_date": "column_stay_date", "hotel_id": "column_hotel_id", "room_type": "column_room_type",
+    "current_price": "column_current_price", "recommended_price": "column_recommended_price",
+    "price_floor": "column_price_floor", "price_ceiling": "column_price_ceiling",
+    "action": "column_action", "expected_revenue_delta": "column_expected_revenue_delta", "confidence": "column_confidence",
+    "occupancy": "column_occupancy", "remaining_inventory_ratio": "column_remaining_inventory_ratio", "pickup_14d": "column_pickup_14d",
+    "main_reasons": "column_main_reasons", "risk_flags": "column_risk_flags",
 }
 
 
@@ -141,9 +97,7 @@ def t(key: str, lang: str = "zh") -> str:
 
 
 def translate_value(value, lang: str = "zh"):
-    if value in TRANSLATIONS:
-        return t(value, lang)
-    return value
+    return t(value, lang) if value in TRANSLATIONS else value
 
 
 def translate_room_type(value, lang: str = "zh") -> str:
@@ -183,6 +137,4 @@ def localized_recommendations(df, lang: str = "zh"):
         localized["main_reasons"] = localized["main_reasons"].map(lambda value: translate_reason_list(value, lang))
     if "risk_flags" in localized.columns:
         localized["risk_flags"] = localized["risk_flags"].map(lambda value: translate_risk_list(value, lang))
-
-    localized = localized.rename(columns={column: t(key, lang) for column, key in COLUMN_KEYS.items() if column in localized.columns})
-    return localized
+    return localized.rename(columns={column: t(key, lang) for column, key in COLUMN_KEYS.items() if column in localized.columns})
