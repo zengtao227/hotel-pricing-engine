@@ -2,7 +2,7 @@ from io import BytesIO
 
 import pandas as pd
 
-from .i18n import LANGUAGES, localized_recommendations
+from .i18n import LANGUAGES, localized_recommendations, localize_room_type_values
 
 
 SHEET_NAMES = {
@@ -47,7 +47,7 @@ def _sheet_name(key: str, lang: str) -> str:
 
 
 def _localize_metrics(metrics: pd.DataFrame, lang: str) -> pd.DataFrame:
-    localized = metrics.copy()
+    localized = localize_room_type_values(metrics, lang)
     localized = localized.rename(
         columns={column: _label(METRIC_COLUMN_LABELS, column, lang) for column in localized.columns}
     )
