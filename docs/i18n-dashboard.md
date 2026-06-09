@@ -135,6 +135,6 @@ sudo journalctl -u hotel-pricing-engine -n 80 --no-pager
 ## 后续建议
 
 - 把审批日志从 CSV 升级为 SQLite。
-- 把回测从静态销量回测升级为候选价格收益模拟和价格弹性模型。
+- 把回测从静态销量回测升级为带价格弹性的收益回测，并展示候选价收益曲线。
 - 增加 Channel Manager 导入模板导出。
 - 为长期公网访问补充基础认证或访问保护。

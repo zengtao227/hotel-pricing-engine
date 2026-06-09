@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from .metrics import calculate_pickup
-from .price_rounding import round_to_price_ending
+from .revenue_simulation import RevenueSimulationResult, simulate_revenue_maximizing_price
 
 
 def _action(current_price: float, recommended_price: float) -> str:
@@ -30,6 +30,23 @@ def _apply_price_bounds(price: float, room_type: str, room_price_bounds: dict | 
     return bounded, min_price or None, max_price or None
 
 
+def _confidence_from_simulation(
+    score: int,
+    action: str,
+    expected_revenue_delta: float,
+    current_expected_revenue: float,
+) -> str:
+    if action == "hold":
+        return "medium" if abs(score) >= 2 else "low"
+
+    uplift_ratio: float = expected_revenue_delta / current_expected_revenue if current_expected_revenue > 0 else 0.0
+    if abs(score) >= 4 and uplift_ratio >= 0.03:
+        return "high"
+    if abs(score) >= 2 or uplift_ratio >= 0.015:
+        return "medium"
+    return "low"
+
+
 def generate_recommendations(
     metrics: pd.DataFrame,
     bookings: pd.DataFrame,
@@ -40,7 +57,7 @@ def generate_recommendations(
     price_rounding_strategy: str = "chinese_lucky",
     room_price_bounds: dict | None = None,
 ) -> pd.DataFrame:
-    """Generate simple explainable rule-based price recommendations."""
+    """Generate explainable revenue-maximizing price recommendations."""
     prices = current_prices.copy()
     prices["stay_date"] = pd.to_datetime(prices["stay_date"]).dt.normalize()
 
@@ -56,12 +73,12 @@ def generate_recommendations(
     pickup = calculate_pickup(bookings, observation_date=observation_date)
 
     future = future_prices.merge(
-        m[["hotel_id", "room_type", "stay_date", "sellable_rooms", "sold_rooms", "occupancy", "adr", "revpar", "is_weekend"]],
+        m[["hotel_id", "room_type", "stay_date", "sellable_rooms", "sold_rooms", "room_revenue", "occupancy", "adr", "revpar", "is_weekend"]],
         how="left",
         on=["hotel_id", "room_type", "stay_date"],
     ).merge(pickup, how="left", on=["hotel_id", "room_type", "stay_date"])
 
-    future[["sold_rooms", "pickup_7d", "pickup_14d"]] = future[["sold_rooms", "pickup_7d", "pickup_14d"]].fillna(0)
+    future[["sold_rooms", "room_revenue", "pickup_7d", "pickup_14d"]] = future[["sold_rooms", "room_revenue", "pickup_7d", "pickup_14d"]].fillna(0)
     future["occupancy"] = future["occupancy"].fillna(0)
 
     historical = m[m["stay_date"] < observation_date].copy()
@@ -129,34 +146,42 @@ def generate_recommendations(
         if np.isnan(row.baseline_adr):
             risk_flags.append("limited historical baseline")
 
-        if score >= 4:
-            change_pct = 0.12
-            confidence = "high"
-        elif score >= 2:
-            change_pct = 0.07
-            confidence = "medium"
-        elif score <= -4:
-            change_pct = -0.12
-            confidence = "high"
-        elif score <= -2:
-            change_pct = -0.07
-            confidence = "medium"
-        else:
-            change_pct = 0.0
-            confidence = "low"
+        _, min_price, max_price = _apply_price_bounds(current_price, row.room_type, room_price_bounds)
+        simulation: RevenueSimulationResult = simulate_revenue_maximizing_price(
+            current_price=current_price,
+            sellable_rooms=sellable_rooms,
+            known_sold_rooms=sold_rooms,
+            known_room_revenue=float(getattr(row, "room_revenue", 0) or 0),
+            occupancy=occupancy,
+            baseline_occupancy=baseline_occupancy,
+            pickup_14d=pickup_14d,
+            days_to_arrival=days_to_arrival,
+            is_weekend=bool(row.is_weekend),
+            max_change_pct=max_change_pct,
+            rounding_strategy=price_rounding_strategy,
+            price_floor=min_price,
+            price_ceiling=max_price,
+        )
+        recommended_price = simulation.recommended_price
+        recommended_action = _action(current_price, recommended_price)
+        confidence = _confidence_from_simulation(
+            score=score,
+            action=recommended_action,
+            expected_revenue_delta=simulation.expected_revenue_delta,
+            current_expected_revenue=simulation.current_expected_revenue,
+        )
 
-        change_pct = float(np.clip(change_pct, -max_change_pct, max_change_pct))
-        raw_recommended_price = current_price * (1 + change_pct)
-        rounded_price = round_to_price_ending(raw_recommended_price, strategy=price_rounding_strategy)
-        recommended_price, min_price, max_price = _apply_price_bounds(rounded_price, row.room_type, room_price_bounds)
-        expected_revenue_delta = recommended_price * max(sold_rooms, 1) - current_price * max(sold_rooms, 1)
-
-        if min_price is not None and rounded_price < min_price:
+        if simulation.price_floor_applied:
             risk_flags.append("price floor applied")
-        if max_price is not None and rounded_price > max_price:
+        if simulation.price_ceiling_applied:
             risk_flags.append("price ceiling applied")
         if not reasons:
             reasons.append("no strong demand or inventory signal")
+        if recommended_action == "hold":
+            reasons.append("current price is near simulated revenue optimum")
+        else:
+            reasons.append("candidate price maximizes simulated expected revenue")
+        reasons.append("price elasticity model estimates demand response")
 
         recommendations.append(
             {
@@ -167,8 +192,16 @@ def generate_recommendations(
                 "recommended_price": recommended_price,
                 "price_floor": min_price,
                 "price_ceiling": max_price,
-                "action": _action(current_price, recommended_price),
-                "expected_revenue_delta": round(float(expected_revenue_delta), 2),
+                "action": recommended_action,
+                "expected_revenue_delta": round(float(simulation.expected_revenue_delta), 2),
+                "current_expected_revenue": simulation.current_expected_revenue,
+                "recommended_expected_revenue": simulation.recommended_expected_revenue,
+                "demand_forecast_at_current_price": simulation.demand_forecast_at_current_price,
+                "current_expected_sold_rooms": simulation.current_expected_sold_rooms,
+                "expected_sold_rooms": simulation.expected_sold_rooms,
+                "expected_new_sold_rooms": simulation.expected_new_sold_rooms,
+                "demand_elasticity": simulation.demand_elasticity,
+                "candidate_price_count": simulation.candidate_price_count,
                 "confidence": confidence,
                 "occupancy": round(occupancy, 3),
                 "remaining_inventory_ratio": round(remaining_ratio, 3),

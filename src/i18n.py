@@ -49,6 +49,14 @@ TRANSLATIONS = {
     "column_price_ceiling": {"zh": "最高价", "en": "Price Ceiling", "de": "Höchstpreis", "fr": "Prix maximum"},
     "column_action": {"zh": "建议动作", "en": "Action", "de": "Aktion", "fr": "Action"},
     "column_expected_revenue_delta": {"zh": "预计收益变化", "en": "Expected Revenue Delta", "de": "Erwartete Umsatzänderung", "fr": "Variation de revenu estimée"},
+    "column_current_expected_revenue": {"zh": "当前价预期收益", "en": "Current Expected Revenue", "de": "Erwarteter Umsatz aktueller Preis", "fr": "Revenu attendu prix actuel"},
+    "column_recommended_expected_revenue": {"zh": "推荐价预期收益", "en": "Recommended Expected Revenue", "de": "Erwarteter Umsatz empfohlener Preis", "fr": "Revenu attendu prix recommandé"},
+    "column_demand_forecast_at_current_price": {"zh": "当前价需求预测", "en": "Demand Forecast at Current Price", "de": "Nachfrageprognose beim aktuellen Preis", "fr": "Prévision de demande au prix actuel"},
+    "column_current_expected_sold_rooms": {"zh": "当前价预计售出", "en": "Current Expected Sold Rooms", "de": "Erwartete Verkäufe aktueller Preis", "fr": "Chambres attendues prix actuel"},
+    "column_expected_sold_rooms": {"zh": "推荐价预计售出", "en": "Recommended Expected Sold Rooms", "de": "Erwartete Verkäufe empfohlener Preis", "fr": "Chambres attendues prix recommandé"},
+    "column_expected_new_sold_rooms": {"zh": "预计新增售出", "en": "Expected New Sold Rooms", "de": "Erwartete neue Verkäufe", "fr": "Nouvelles ventes attendues"},
+    "column_demand_elasticity": {"zh": "价格弹性", "en": "Price Elasticity", "de": "Preiselastizität", "fr": "Élasticité-prix"},
+    "column_candidate_price_count": {"zh": "候选价数量", "en": "Candidate Price Count", "de": "Anzahl Kandidatenpreise", "fr": "Nombre de prix candidats"},
     "column_confidence": {"zh": "置信度", "en": "Confidence", "de": "Sicherheit", "fr": "Confiance"},
     "column_occupancy": {"zh": "入住率", "en": "Occupancy", "de": "Auslastung", "fr": "Occupation"},
     "column_remaining_inventory_ratio": {"zh": "剩余库存比例", "en": "Remaining Inventory Ratio", "de": "Restbestandsquote", "fr": "Ratio de stock restant"},
@@ -72,6 +80,9 @@ REASONS = {
     "remaining inventory is limited": {"zh": "剩余库存有限", "en": "Remaining inventory is limited", "de": "Begrenzter Restbestand", "fr": "Stock restant limité"},
     "high remaining inventory close to arrival": {"zh": "临近入住但剩余库存较高", "en": "High remaining inventory close to arrival", "de": "Hoher Restbestand kurz vor Anreise", "fr": "Stock restant élevé proche de l’arrivée"},
     "no strong demand or inventory signal": {"zh": "暂无强需求或库存信号", "en": "No strong demand or inventory signal", "de": "Kein starkes Nachfrage- oder Bestandssignal", "fr": "Aucun signal fort de demande ou de stock"},
+    "candidate price maximizes simulated expected revenue": {"zh": "候选价在收益模拟中预期收益最高", "en": "Candidate price maximizes simulated expected revenue", "de": "Kandidatenpreis maximiert simulierten erwarteten Umsatz", "fr": "Le prix candidat maximise le revenu attendu simulé"},
+    "current price is near simulated revenue optimum": {"zh": "当前价已接近模拟收益最优点", "en": "Current price is near simulated revenue optimum", "de": "Aktueller Preis liegt nahe am simulierten Umsatzoptimum", "fr": "Le prix actuel est proche de l’optimum de revenu simulé"},
+    "price elasticity model estimates demand response": {"zh": "价格弹性模型估计需求响应", "en": "Price elasticity model estimates demand response", "de": "Preiselastizitätsmodell schätzt Nachfragewirkung", "fr": "Le modèle d’élasticité-prix estime la réponse de la demande"},
 }
 
 RISKS = {
@@ -86,7 +97,12 @@ COLUMN_KEYS = {
     "stay_date": "column_stay_date", "hotel_id": "column_hotel_id", "room_type": "column_room_type",
     "current_price": "column_current_price", "recommended_price": "column_recommended_price",
     "price_floor": "column_price_floor", "price_ceiling": "column_price_ceiling",
-    "action": "column_action", "expected_revenue_delta": "column_expected_revenue_delta", "confidence": "column_confidence",
+    "action": "column_action", "expected_revenue_delta": "column_expected_revenue_delta",
+    "current_expected_revenue": "column_current_expected_revenue", "recommended_expected_revenue": "column_recommended_expected_revenue",
+    "demand_forecast_at_current_price": "column_demand_forecast_at_current_price",
+    "current_expected_sold_rooms": "column_current_expected_sold_rooms", "expected_sold_rooms": "column_expected_sold_rooms",
+    "expected_new_sold_rooms": "column_expected_new_sold_rooms", "demand_elasticity": "column_demand_elasticity",
+    "candidate_price_count": "column_candidate_price_count", "confidence": "column_confidence",
     "occupancy": "column_occupancy", "remaining_inventory_ratio": "column_remaining_inventory_ratio", "pickup_14d": "column_pickup_14d",
     "main_reasons": "column_main_reasons", "risk_flags": "column_risk_flags",
 }

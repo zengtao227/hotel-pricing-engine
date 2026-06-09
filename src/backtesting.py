@@ -21,7 +21,7 @@ BT = {
     },
     "observation_date": {"zh": "回测观察日", "en": "Backtest observation date", "de": "Backtest-Beobachtungstag", "fr": "Date d’observation"},
     "run_hint": {"zh": "系统只使用该日以前已经产生的订单作为已知信息，并对后续周期生成推荐。", "en": "The system uses only bookings already made by that date and generates recommendations for the following horizon.", "de": "Das System nutzt nur bis dahin bekannte Buchungen und erstellt Empfehlungen für den folgenden Zeitraum.", "fr": "Le système utilise uniquement les réservations déjà connues à cette date et génère des recommandations pour l’horizon suivant."},
-    "static_volume_note": {"zh": "说明：当前回测假设最终售出房间数不随推荐价格变化，用于快速比较价格策略方向。后续可升级为带价格弹性的需求模型。", "en": "Note: this backtest assumes final sold rooms do not change with the recommended price. It can later be upgraded with price elasticity.", "de": "Hinweis: Dieser Backtest nimmt an, dass endgültig verkaufte Zimmer nicht auf den empfohlenen Preis reagieren. Später kann Preiselastizität ergänzt werden.", "fr": "Note : ce backtest suppose que les chambres finalement vendues ne changent pas avec le prix recommandé. Il pourra ensuite intégrer l’élasticité-prix."},
+    "static_volume_note": {"zh": "说明：推荐引擎已使用候选价收益模拟；当前回测页面仍是假设最终售出房间数不随推荐价格变化的静态销量回测。后续应升级为带价格弹性的收益回测。", "en": "Note: the recommendation engine now uses candidate-price revenue simulation. This page is still a static-volume backtest that assumes final sold rooms do not change with the recommended price. It should later be upgraded to elasticity-aware revenue backtesting.", "de": "Hinweis: Die Empfehlungslogik nutzt nun eine Kandidatenpreis-Umsatzsimulation. Diese Seite ist weiterhin ein statischer Backtest, der annimmt, dass endgültig verkaufte Zimmer nicht auf den empfohlenen Preis reagieren. Später sollte sie zu einem preiselastizitätsbasierten Umsatz-Backtest ausgebaut werden.", "fr": "Note : le moteur de recommandation utilise désormais une simulation de revenu par prix candidat. Cette page reste un backtest à volume statique supposant que les chambres finalement vendues ne changent pas avec le prix recommandé. Elle devra ensuite évoluer vers un backtest de revenu avec élasticité-prix."},
     "baseline_revenue": {"zh": "基准收入", "en": "Baseline Revenue", "de": "Basisumsatz", "fr": "Revenu de référence"},
     "recommended_revenue": {"zh": "推荐价静态收入", "en": "Recommended Static Revenue", "de": "Empfohlener statischer Umsatz", "fr": "Revenu statique recommandé"},
     "revenue_delta": {"zh": "静态收益变化", "en": "Static Revenue Delta", "de": "Statische Umsatzänderung", "fr": "Variation statique"},
@@ -40,6 +40,11 @@ COLUMN_LABELS = {
     "recommended_price": {"zh": "推荐价", "en": "Recommended Price", "de": "Empfohlener Preis", "fr": "Prix recommandé"},
     "action": {"zh": "建议动作", "en": "Action", "de": "Aktion", "fr": "Action"},
     "confidence": {"zh": "置信度", "en": "Confidence", "de": "Sicherheit", "fr": "Confiance"},
+    "current_expected_revenue": {"zh": "观察日当前价预期收益", "en": "As-of Current Expected Revenue", "de": "Erwarteter Umsatz aktueller Preis", "fr": "Revenu attendu prix actuel"},
+    "recommended_expected_revenue": {"zh": "观察日推荐价预期收益", "en": "As-of Recommended Expected Revenue", "de": "Erwarteter Umsatz empfohlener Preis", "fr": "Revenu attendu prix recommandé"},
+    "demand_forecast_at_current_price": {"zh": "观察日需求预测", "en": "As-of Demand Forecast", "de": "Nachfrageprognose", "fr": "Prévision de demande"},
+    "expected_sold_rooms": {"zh": "推荐价预计售出", "en": "Recommended Expected Sold Rooms", "de": "Erwartete Verkäufe empfohlener Preis", "fr": "Chambres attendues prix recommandé"},
+    "demand_elasticity": {"zh": "价格弹性", "en": "Price Elasticity", "de": "Preiselastizität", "fr": "Élasticité-prix"},
     "known_sold_rooms": {"zh": "观察日已售房间", "en": "Known Sold Rooms", "de": "Bekannte verkaufte Zimmer", "fr": "Chambres vendues connues"},
     "realized_sold_rooms": {"zh": "最终实际售出", "en": "Final Realized Sold Rooms", "de": "Endgültig verkaufte Zimmer", "fr": "Chambres finalement vendues"},
     "known_occupancy": {"zh": "观察日入住率", "en": "Known Occupancy", "de": "Bekannte Auslastung", "fr": "Occupation connue"},
@@ -132,7 +137,7 @@ def run_static_backtest(metrics, bookings, current_prices, observation_date, hor
 
 
 def localized_backtest_detail(detail: pd.DataFrame, lang: str) -> pd.DataFrame:
-    columns = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price", "action", "confidence", "known_sold_rooms", "known_occupancy", "realized_sold_rooms", "realized_occupancy", "baseline_revenue", "recommended_revenue", "static_revenue_delta", "main_reasons", "risk_flags"]
+    columns = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price", "action", "confidence", "current_expected_revenue", "recommended_expected_revenue", "demand_forecast_at_current_price", "expected_sold_rooms", "demand_elasticity", "known_sold_rooms", "known_occupancy", "realized_sold_rooms", "realized_occupancy", "baseline_revenue", "recommended_revenue", "static_revenue_delta", "main_reasons", "risk_flags"]
     out = detail[[c for c in columns if c in detail.columns]].copy()
     if "room_type" in out.columns:
         out["room_type"] = out["room_type"].map(lambda v: translate_room_type(v, lang))

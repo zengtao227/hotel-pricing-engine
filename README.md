@@ -11,7 +11,8 @@
 - 可以加载酒店订单、库存和当前价格 CSV
 - 可以自动生成 demo 数据
 - 可以计算 Occupancy、ADR、RevPAR、Pickup 等核心指标
-- 可以生成未来日期的规则型调价建议
+- 可以生成未来日期的可解释调价建议
+- 已接入候选价收益模拟和价格弹性基线，用于计算约束下预期收益最高的推荐价
 - 可以导出多语言 Excel 调价建议报表
 - 可以转换 Kaggle Hotel Booking Demand 数据集为 MVP 格式
 - 支持中文、英文、德文、法文界面切换
@@ -38,10 +39,19 @@ streamlit run app/streamlit_app.py
 酒店定价不是单一预测问题，而是一个收益管理问题：
 
 ```text
-预期收益 = 推荐价格 * 预计成交间夜数
+预期收益 = 已锁定订单收入 + 推荐价格 * 预计新增成交间夜数
 ```
 
 价格升高可能提高单间收入，但会降低成交概率；价格降低可能提高入住率，但会牺牲 ADR。系统需要在价格、需求、剩余库存和时间压力之间找到更优平衡。
+
+当前实现使用 **候选价收益模拟**：
+
+1. 用历史基准入住率、当前已售间夜和最近 pickup 估计当前价下的最终需求。
+2. 用价格弹性估计候选价对未来未成交需求的影响。
+3. 在单次调价幅度、房型最低价/最高价和尾数规则内枚举可执行候选价。
+4. 选择预期收益最高的候选价；若收益提升不足以覆盖运营摩擦，则建议保持当前价。
+
+完整数学说明见 [docs/revenue-optimization-model.md](docs/revenue-optimization-model.md)。
 
 ## MVP 范围
 
@@ -50,6 +60,7 @@ streamlit run app/streamlit_app.py
 - 汇总历史订房、成交价格、入住日期、取消状态和房型数据
 - 计算房型和日期级收益指标
 - 生成可解释的当前价、推荐价和建议动作
+- 输出当前价预期收益、推荐价预期收益、价格弹性、需求预测和候选价数量
 - 给出推荐理由、置信度和人工复核提示
 - 支持价格尾数规则和价格上下限
 - 支持销售总监或店长审核最终批准价
@@ -91,6 +102,7 @@ python scripts/create_demo_data.py --source data/raw/hotel_bookings.csv --output
 - [docs/requirements.md](docs/requirements.md): 产品需求与 MVP 验收标准
 - [docs/data-requirements.md](docs/data-requirements.md): 数据字段、口径和质量要求
 - [docs/modeling-approach.md](docs/modeling-approach.md): 建模路线与优化思路
+- [docs/revenue-optimization-model.md](docs/revenue-optimization-model.md): 收益最大化定价模型与数学基础
 - [docs/roadmap.md](docs/roadmap.md): 阶段计划
 - [docs/open-questions.md](docs/open-questions.md): 待确认问题
 - [docs/mvp-implementation.md](docs/mvp-implementation.md): MVP 运行和实现说明

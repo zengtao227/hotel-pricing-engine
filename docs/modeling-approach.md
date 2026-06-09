@@ -11,6 +11,8 @@
 3. 对候选价格做收益模拟
 4. 输出风险调整后的推荐价
 
+当前程序已经实现第一版候选价收益模拟和价格弹性基线。完整数学说明见 [revenue-optimization-model.md](revenue-optimization-model.md)。
+
 ## 2. 基线模型
 
 第一版建议先建立可解释基线。
@@ -63,9 +65,10 @@
 对每个候选价格计算：
 
 ```text
-expected_demand = demand_model(features, candidate_price)
-expected_sold_rooms = min(expected_demand, remaining_inventory)
-expected_revenue = candidate_price * expected_sold_rooms
+已锁定收入 = 观察日已经成交订单的房费收入
+未来需求 = demand_model(features, candidate_price)
+预计新增售出 = min(未来需求, 剩余库存)
+expected_revenue = 已锁定收入 + candidate_price * 预计新增售出
 ```
 
 推荐价不一定是数学上最高的点，还要考虑：
@@ -77,6 +80,15 @@ expected_revenue = candidate_price * expected_sold_rooms
 - 渠道价格一致性
 - 取消风险
 
+当前 v1 实现使用常数价格弹性模型：
+
+```text
+FutureDemand(p) = max(D0 - S0, 0) * (p / p0) ^ epsilon
+ExpectedRevenue(p) = R0 + p * min(C, FutureDemand(p))
+```
+
+其中 `S0` 是观察日已售间夜，`R0` 是已锁定收入，`C` 是剩余库存，`epsilon` 是价格弹性。系统会在单次调价幅度、房型最低价/最高价和价格尾数规则内枚举候选价，并选择预期收益最高的可执行价格。若收益提升低于最小阈值，则建议保持当前价。
+
 ## 3. 推荐输出
 
 每条推荐至少包含：
@@ -87,6 +99,11 @@ expected_revenue = candidate_price * expected_sold_rooms
 - `recommended_price`
 - `action`: increase、decrease、hold
 - `expected_revenue_delta`
+- `current_expected_revenue`
+- `recommended_expected_revenue`
+- `demand_forecast_at_current_price`
+- `expected_sold_rooms`
+- `demand_elasticity`
 - `confidence`
 - `main_reasons`
 - `risk_flags`
@@ -131,6 +148,8 @@ MVP 必须加入规则护栏：
 ### 阶段 1：规则 + 统计基线
 
 建立指标、历史同期对比、简单需求预测和候选价格模拟。
+
+当前状态：已实现 v1 候选价收益模拟，仍需把 Backtest tab 升级为带价格弹性的收益回测。
 
 ### 阶段 2：机器学习需求预测
 
