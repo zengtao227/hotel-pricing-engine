@@ -23,6 +23,8 @@ from src.approval_workflow import (
     to_editor_display,
     update_manual_flags,
 )
+from src.audit_log_store import append_audit_log, load_audit_log
+from src.backtesting import bt_label, render_backtesting
 from src.data_loader import HotelData, load_demo_data, load_hotel_data
 from src.hotel_config import (
     apply_config_to_current_prices,
@@ -31,7 +33,7 @@ from src.hotel_config import (
     render_hotel_configuration,
     room_bounds_from_config,
 )
-from src.i18n import LANGUAGES, localized_recommendations, t
+from src.i18n import LANGUAGES, localized_recommendations, localize_room_type_values, t
 from src.metrics import calculate_daily_metrics, summarize_overview
 from src.price_rounding import PRICE_ROUNDING_STRATEGIES
 from src.pricing_engine import generate_recommendations
@@ -41,6 +43,8 @@ from src.validation import validate_all
 
 
 st.set_page_config(page_title="Hotel Pricing Engine", layout="wide")
+
+AUDIT_LOG_DIR = ROOT / "data" / "audit_logs"
 
 EXPORT_LANGUAGE_LABELS = {
     "zh": "Excel 导出语言",
@@ -198,11 +202,13 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     st.subheader(alabel("tab", lang))
     st.write(alabel("intro", lang))
 
+    if "approval_log" not in st.session_state:
+        st.session_state.approval_log = load_audit_log(AUDIT_LOG_DIR)
+
     signature = approval_signature(recommendations)
     if st.session_state.get("approval_signature") != signature or "approval_table" not in st.session_state:
         st.session_state.approval_table = build_approval_table(recommendations)
         st.session_state.approval_signature = signature
-        st.session_state.approval_log = pd.DataFrame()
 
     c1, c2 = st.columns([0.35, 0.65])
     with c1:
@@ -211,7 +217,6 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     with c2:
         if st.button(alabel("reset", lang), use_container_width=True):
             st.session_state.approval_table = build_approval_table(recommendations)
-            st.session_state.approval_log = pd.DataFrame()
 
     st.caption(alabel("editor_caption", lang))
     editor_display = to_editor_display(st.session_state.approval_table, lang)
@@ -221,7 +226,7 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
         hide_index=True,
         column_config=editor_column_config(lang),
         disabled=disabled_columns(lang),
-        key="approval_editor",
+        key=f"approval_editor_{signature}_{lang}",
     )
 
     edited_internal = from_editor_display(edited_display, lang)
@@ -239,7 +244,7 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
         if log_rows.empty:
             st.info(alabel("no_rows", lang))
         else:
-            st.session_state.approval_log = pd.concat([st.session_state.approval_log, log_rows], ignore_index=True)
+            st.session_state.approval_log = append_audit_log(log_rows, AUDIT_LOG_DIR)
             st.success(f"{alabel('push_success', lang)}: {len(log_rows)}")
 
     if st.session_state.approval_log.empty:
@@ -257,11 +262,11 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
 def render_data_preview(hotel_data, lang: str) -> None:
     st.subheader(t("data_preview", lang))
     with st.expander(t("bookings", lang), expanded=False):
-        st.dataframe(hotel_data.bookings.head(50), use_container_width=True)
+        st.dataframe(localize_room_type_values(hotel_data.bookings.head(50), lang), use_container_width=True)
     with st.expander(t("inventory", lang), expanded=False):
-        st.dataframe(hotel_data.inventory.head(50), use_container_width=True)
+        st.dataframe(localize_room_type_values(hotel_data.inventory.head(50), lang), use_container_width=True)
     with st.expander(t("current_prices", lang), expanded=False):
-        st.dataframe(hotel_data.current_prices.head(50), use_container_width=True)
+        st.dataframe(localize_room_type_values(hotel_data.current_prices.head(50), lang), use_container_width=True)
 
 
 header_left, header_right = st.columns([0.78, 0.22])
@@ -342,6 +347,7 @@ if validation_errors:
 
 metrics = calculate_daily_metrics(hotel_data.bookings, hotel_data.inventory)
 observation_date = pd.to_datetime(hotel_data.current_prices["stay_date"]).min()
+room_price_bounds = room_bounds_from_config(hotel_config)
 
 recommendations = generate_recommendations(
     metrics=metrics,
@@ -351,15 +357,16 @@ recommendations = generate_recommendations(
     horizon_days=horizon_days,
     max_change_pct=max_change_pct,
     price_rounding_strategy=price_rounding_strategy,
-    room_price_bounds=room_bounds_from_config(hotel_config),
+    room_price_bounds=room_price_bounds,
 )
 
 overview = summarize_overview(metrics)
 
-tab_dashboard, tab_recommendations, tab_approval, tab_config, tab_data = st.tabs(
+tab_dashboard, tab_recommendations, tab_backtesting, tab_approval, tab_config, tab_data = st.tabs(
     [
         t("sales_dashboard", lang),
         t("recommendations", lang),
+        bt_label("tab", lang),
         alabel("tab", lang),
         hotel_config_label("tab", lang),
         t("data_preview", lang),
@@ -377,6 +384,18 @@ with tab_recommendations:
         data=build_excel_report(metrics, recommendations, lang=export_lang),
         file_name=f"hotel_pricing_recommendations_{export_lang}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+with tab_backtesting:
+    render_backtesting(
+        metrics=metrics,
+        bookings=hotel_data.bookings,
+        current_prices=hotel_data.current_prices,
+        lang=lang,
+        default_horizon_days=horizon_days,
+        max_change_pct=max_change_pct,
+        price_rounding_strategy=price_rounding_strategy,
+        room_price_bounds=room_price_bounds,
     )
 
 with tab_approval:
