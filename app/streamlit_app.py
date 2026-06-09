@@ -158,7 +158,6 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         action_counts["action_label"] = action_counts["action"].map(lambda value: t(value, lang))
         st.plotly_chart(
             px.bar(action_counts, x="action_label", y="count", text="count", title=t("pricing_actions", lang)),
-            width="stretch",
         )
 
     with right:
@@ -169,7 +168,6 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         )
         st.plotly_chart(
             px.line(trend, x="stay_date", y="revpar", title=t("avg_revpar_by_date", lang)),
-            width="stretch",
         )
 
     st.subheader(t("top_opportunities", lang))
