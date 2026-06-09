@@ -52,16 +52,170 @@ def _inject_mobile_css() -> None:
     st.markdown(
         """
         <style>
-        /* ── Mobile responsive overrides (≤640px) ── */
+        /* ════════════════════════════════════════════════
+           Global theme overrides — Hotel Pricing Engine
+           Design: Navy #1E3A8A + Royal Blue #1D4ED8
+           palette: ui-ux-pro-max Hotel/Hospitality Result 1
+           ════════════════════════════════════════════════ */
+
+        /* ── 1. Base typography ─────────────────────── */
+        html, body, [class*="css"] {
+            font-family: "Inter", -apple-system, "PingFang SC",
+                         "Microsoft YaHei UI", "Microsoft YaHei",
+                         "Noto Sans SC", sans-serif;
+        }
+
+        /* ── 2. Main container breathing room ───────── */
+        .main .block-container {
+            padding-top: 1.25rem !important;
+            padding-bottom: 2rem !important;
+        }
+
+        /* ── 3. Sidebar — light, clean, branded ──────── */
+        section[data-testid="stSidebar"] {
+            background: #F1F5F9 !important;
+            border-right: 1px solid #E2E8F0 !important;
+        }
+        section[data-testid="stSidebar"] > div:first-child {
+            padding-top: 1rem;
+        }
+        /* Sidebar section headers */
+        section[data-testid="stSidebar"] h2,
+        section[data-testid="stSidebar"] h3 {
+            color: #1E293B !important;
+            font-size: 0.85rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.5rem !important;
+        }
+
+        /* ── 4. Metric cards — signature redesign ───── */
+        [data-testid="stMetric"] {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 1rem 1.1rem 0.85rem !important;
+            box-shadow: 0 1px 4px rgba(30, 58, 138, 0.07);
+            transition: box-shadow 0.2s;
+        }
+        [data-testid="stMetric"]:hover {
+            box-shadow: 0 4px 16px rgba(30, 58, 138, 0.13);
+        }
+        [data-testid="stMetricLabel"] {
+            color: #64748B !important;
+            font-size: 0.78rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        [data-testid="stMetricValue"] {
+            color: #1D4ED8 !important;
+            font-weight: 800 !important;
+            font-size: 1.65rem !important;
+            letter-spacing: -0.025em;
+            line-height: 1.15 !important;
+        }
+        [data-testid="stMetricDelta"] {
+            font-weight: 600 !important;
+            font-size: 0.82rem !important;
+        }
+
+        /* ── 5. Tab bar — crisp navy indicator ───────── */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 0;
+            border-bottom: 2px solid #E2E8F0;
+            background: transparent;
+        }
+        .stTabs [data-baseweb="tab"] {
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: #64748B;
+            padding: 10px 22px;
+            border-radius: 0;
+            background: transparent;
+        }
+        .stTabs [aria-selected="true"] {
+            color: #1E3A8A !important;
+        }
+        .stTabs [data-baseweb="tab-highlight"] {
+            background-color: #1E3A8A !important;
+            height: 3px;
+            border-radius: 3px 3px 0 0;
+        }
+
+        /* ── 6. Buttons — navy primary ───────────────── */
+        .stButton > button[kind="primary"],
+        .stDownloadButton > button {
+            background: #1E3A8A !important;
+            color: #FFFFFF !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            padding: 0.45rem 1.25rem !important;
+            box-shadow: 0 2px 8px rgba(30, 58, 138, 0.25);
+            transition: all 0.18s ease !important;
+        }
+        .stButton > button[kind="primary"]:hover,
+        .stDownloadButton > button:hover {
+            background: #1E40AF !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(30, 58, 138, 0.35) !important;
+        }
+        .stButton > button[kind="secondary"] {
+            border-color: #1E3A8A !important;
+            color: #1E3A8A !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+
+        /* ── 7. Expander — card-like borders ─────────── */
+        [data-testid="stExpander"] {
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 10px !important;
+            background: #FFFFFF !important;
+            margin-bottom: 0.5rem;
+        }
+        [data-testid="stExpander"] summary {
+            font-weight: 600 !important;
+            color: #1E293B !important;
+        }
+
+        /* ── 8. Subheaders ───────────────────────────── */
+        h3[data-testid="stHeading"] {
+            color: #1E293B !important;
+            font-weight: 700 !important;
+            font-size: 1.05rem !important;
+        }
+
+        /* ── 9. Data tables ──────────────────────────── */
+        [data-testid="stDataFrame"] {
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #E2E8F0;
+        }
+
+        /* ── 10. Select box / slider accent ──────────── */
+        [data-baseweb="select"] [data-baseweb="tag"] {
+            background: #EFF6FF !important;
+            color: #1E3A8A !important;
+        }
+
+        /* ── 11. Info / callout boxes ────────────────── */
+        .stAlert[data-baseweb="notification"][kind="info"] {
+            background: #EFF6FF !important;
+            border-color: #BFDBFE !important;
+            color: #1E40AF !important;
+        }
+
+        /* ── Mobile responsive (≤640px) ─────────────── */
         @media screen and (max-width: 640px) {
-            /* Prevent horizontal overflow from wide layout */
             .main .block-container {
                 padding-left: 0.75rem !important;
                 padding-right: 0.75rem !important;
                 max-width: 100vw !important;
                 overflow-x: hidden !important;
             }
-            /* Wrap column groups so 4-col metrics become 2×2 */
             [data-testid="stHorizontalBlock"] {
                 flex-wrap: wrap !important;
             }
@@ -69,19 +223,16 @@ def _inject_mobile_css() -> None:
                 min-width: calc(50% - 0.5rem) !important;
                 flex: 1 1 calc(50% - 0.5rem) !important;
             }
-            /* Smaller metric text so values aren't clipped */
             [data-testid="stMetricValue"] {
                 font-size: 1.1rem !important;
             }
             [data-testid="stMetricLabel"] {
                 font-size: 0.7rem !important;
             }
-            /* Sidebar: full-width slide-over on mobile */
             section[data-testid="stSidebar"] {
                 width: 85vw !important;
                 min-width: 85vw !important;
             }
-            /* Tables: horizontal scroll instead of overflow */
             [data-testid="stDataFrame"] > div,
             [data-testid="stDataEditor"] > div {
                 overflow-x: auto !important;
@@ -190,15 +341,6 @@ def _expected_recommendation_rows(current_prices: pd.DataFrame, observation_date
 
 
 def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame, overview: dict, lang: str) -> None:
-    st.markdown(
-        """
-        <style>
-        [data-testid="stMetricValue"] { color: #0f766e; font-weight: 700; }
-        [data-testid="stMetricDelta"] { font-weight: 600; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
     st.subheader(t("sales_dashboard", lang))
     st.write(t("summary_text", lang))
     render_interpretation_expander(lang)
