@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from io import BytesIO
 from typing import Any
 
 import pandas as pd
 import streamlit as st
 
-from .i18n import LANGUAGES, translate_room_type
+from .i18n import LANGUAGES, t, translate_room_type
 from .price_rounding import round_to_price_ending
 
 
@@ -23,33 +22,9 @@ DEFAULT_HOTEL_CONFIG: dict[str, Any] = {
     "default_horizon_days": 30,
     "default_max_change_pct": 0.15,
     "room_types": [
-        {
-            "room_type": "Standard Double",
-            "room_code": "STD_DB",
-            "base_price": 388.0,
-            "min_price": 328.0,
-            "max_price": 588.0,
-            "weekend_uplift": 40.0,
-            "enabled": True,
-        },
-        {
-            "room_type": "Superior Double",
-            "room_code": "SUP_DB",
-            "base_price": 468.0,
-            "min_price": 398.0,
-            "max_price": 688.0,
-            "weekend_uplift": 40.0,
-            "enabled": True,
-        },
-        {
-            "room_type": "Family Room",
-            "room_code": "FAM",
-            "base_price": 588.0,
-            "min_price": 488.0,
-            "max_price": 888.0,
-            "weekend_uplift": 40.0,
-            "enabled": True,
-        },
+        {"room_type": "Standard Double", "room_code": "STD_DB", "base_price": 388.0, "min_price": 328.0, "max_price": 588.0, "weekend_uplift": 40.0, "enabled": True},
+        {"room_type": "Superior Double", "room_code": "SUP_DB", "base_price": 468.0, "min_price": 398.0, "max_price": 688.0, "weekend_uplift": 40.0, "enabled": True},
+        {"room_type": "Family Room", "room_code": "FAM", "base_price": 588.0, "min_price": 488.0, "max_price": 888.0, "weekend_uplift": 40.0, "enabled": True},
     ],
 }
 
@@ -82,14 +57,13 @@ LABELS = {
     "city": {"zh": "城市", "en": "City", "de": "Stadt", "fr": "Ville"},
     "market_positioning": {"zh": "市场定位", "en": "Market positioning", "de": "Marktpositionierung", "fr": "Positionnement"},
     "currency": {"zh": "货币", "en": "Currency", "de": "Währung", "fr": "Devise"},
+    "room_name": {"zh": "显示房型", "en": "Display room type", "de": "Angezeigter Zimmertyp", "fr": "Type affiché"},
     "base_price": {"zh": "基准价", "en": "Base price", "de": "Basispreis", "fr": "Prix de base"},
     "min_price": {"zh": "最低价", "en": "Minimum price", "de": "Mindestpreis", "fr": "Prix minimum"},
     "max_price": {"zh": "最高价", "en": "Maximum price", "de": "Höchstpreis", "fr": "Prix maximum"},
     "weekend_uplift": {"zh": "周末加价", "en": "Weekend uplift", "de": "Wochenendaufschlag", "fr": "Majoration week-end"},
     "enabled": {"zh": "参与推荐", "en": "Enabled", "de": "Aktiv", "fr": "Actif"},
 }
-
-ROOM_COLUMNS = ["enabled", "room_type", "room_code", "base_price", "min_price", "max_price", "weekend_uplift"]
 
 
 def label(key: str, lang: str = "zh") -> str:
@@ -121,18 +95,16 @@ def load_config_from_upload(uploaded_file) -> dict[str, Any]:
 def room_config_dataframe(config: dict[str, Any], lang: str) -> pd.DataFrame:
     rows = []
     for room in config.get("room_types", []):
-        rows.append(
-            {
-                "enabled": bool(room.get("enabled", True)),
-                "room_type": room.get("room_type", ""),
-                "room_name": translate_room_type(room.get("room_type", ""), lang),
-                "room_code": room.get("room_code", ""),
-                "base_price": float(room.get("base_price", 0)),
-                "min_price": float(room.get("min_price", 0)),
-                "max_price": float(room.get("max_price", 0)),
-                "weekend_uplift": float(room.get("weekend_uplift", 0)),
-            }
-        )
+        rows.append({
+            "enabled": bool(room.get("enabled", True)),
+            "room_type": room.get("room_type", ""),
+            "room_name": translate_room_type(room.get("room_type", ""), lang),
+            "room_code": room.get("room_code", ""),
+            "base_price": float(room.get("base_price", 0)),
+            "min_price": float(room.get("min_price", 0)),
+            "max_price": float(room.get("max_price", 0)),
+            "weekend_uplift": float(room.get("weekend_uplift", 0)),
+        })
     return pd.DataFrame(rows)
 
 
@@ -148,17 +120,15 @@ def dataframe_to_room_config(df: pd.DataFrame) -> list[dict[str, Any]]:
             base_price = min_price
         if base_price > max_price and max_price > 0:
             base_price = max_price
-        rooms.append(
-            {
-                "room_type": str(row.get("room_type", "")).strip(),
-                "room_code": str(row.get("room_code", "")).strip(),
-                "base_price": base_price,
-                "min_price": min_price,
-                "max_price": max_price,
-                "weekend_uplift": float(row.get("weekend_uplift", 0) or 0),
-                "enabled": bool(row.get("enabled", True)),
-            }
-        )
+        rooms.append({
+            "room_type": str(row.get("room_type", "")).strip(),
+            "room_code": str(row.get("room_code", "")).strip(),
+            "base_price": base_price,
+            "min_price": min_price,
+            "max_price": max_price,
+            "weekend_uplift": float(row.get("weekend_uplift", 0) or 0),
+            "enabled": bool(row.get("enabled", True)),
+        })
     return [room for room in rooms if room["room_type"]]
 
 
@@ -167,7 +137,7 @@ def apply_config_to_current_prices(current_prices: pd.DataFrame, config: dict[st
         return current_prices.copy()
 
     room_map = room_config_map(config)
-    out = current_prices.copy()
+    out = current_prices[current_prices["room_type"].isin(room_map.keys())].copy()
     out["stay_date"] = pd.to_datetime(out["stay_date"]).dt.normalize()
 
     def price_for(row) -> float:
@@ -178,23 +148,24 @@ def apply_config_to_current_prices(current_prices: pd.DataFrame, config: dict[st
         weekend_uplift = float(room.get("weekend_uplift", 0)) if stay_date.weekday() >= 5 else 0.0
         raw_price = float(room.get("base_price", row["current_price"])) + weekend_uplift
         rounded = round_to_price_ending(raw_price, strategy=rounding_strategy)
-        return float(min(max(rounded, float(room.get("min_price", rounded))), float(room.get("max_price", rounded))))
+        min_price = float(room.get("min_price", rounded) or rounded)
+        max_price = float(room.get("max_price", rounded) or rounded)
+        return float(min(max(rounded, min_price), max_price))
 
     out["current_price"] = out.apply(price_for, axis=1)
     return out
 
 
 def room_bounds_from_config(config: dict[str, Any]) -> dict[str, dict[str, float]]:
-    bounds = {}
-    for room in config.get("room_types", []):
-        if not room.get("enabled", True):
-            continue
-        bounds[room["room_type"]] = {
+    return {
+        room["room_type"]: {
             "min_price": float(room.get("min_price", 0) or 0),
             "max_price": float(room.get("max_price", 0) or 0),
             "base_price": float(room.get("base_price", 0) or 0),
         }
-    return bounds
+        for room in config.get("room_types", [])
+        if room.get("enabled", True)
+    }
 
 
 def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, Any]:
@@ -215,12 +186,15 @@ def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, A
         config["hotel_name"] = c1.text_input(label("hotel_name", lang), value=str(config.get("hotel_name", "")))
         config["city"] = c2.text_input(label("city", lang), value=str(config.get("city", "")))
         config["market_positioning"] = st.text_input(label("market_positioning", lang), value=str(config.get("market_positioning", "")))
-        config["currency"] = st.selectbox(label("currency", lang), ["CNY", "CHF", "EUR", "USD"], index=["CNY", "CHF", "EUR", "USD"].index(config.get("currency", "CNY")) if config.get("currency", "CNY") in ["CNY", "CHF", "EUR", "USD"] else 0)
+        currency_options = ["CNY", "CHF", "EUR", "USD"]
+        current_currency = config.get("currency", "CNY")
+        config["currency"] = st.selectbox(label("currency", lang), currency_options, index=currency_options.index(current_currency) if current_currency in currency_options else 0)
 
     with st.expander(label("pricing_rules", lang), expanded=True):
         c1, c2 = st.columns(2)
         config["apply_configured_prices"] = c1.toggle(label("apply_configured_prices", lang), value=bool(config.get("apply_configured_prices", True)), help=label("apply_help", lang))
-        config["default_language"] = c2.selectbox(label("language", lang), list(LANGUAGES.keys()), format_func=lambda code: LANGUAGES[code], index=list(LANGUAGES.keys()).index(config.get("default_language", "zh")) if config.get("default_language", "zh") in LANGUAGES else 0)
+        current_language = config.get("default_language", "zh")
+        config["default_language"] = c2.selectbox(t("language", lang), list(LANGUAGES.keys()), format_func=lambda code: LANGUAGES[code], index=list(LANGUAGES.keys()).index(current_language) if current_language in LANGUAGES else 0)
 
     st.subheader(label("room_config", lang))
     room_df = room_config_dataframe(config, lang)
@@ -230,7 +204,7 @@ def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, A
         hide_index=True,
         column_config={
             "enabled": st.column_config.CheckboxColumn(label("enabled", lang)),
-            "room_name": st.column_config.TextColumn(label("column_room_name", lang) if "column_room_name" in LABELS else "Display name", disabled=True),
+            "room_name": st.column_config.TextColumn(label("room_name", lang)),
             "base_price": st.column_config.NumberColumn(label("base_price", lang), min_value=0, step=10, format="%.0f"),
             "min_price": st.column_config.NumberColumn(label("min_price", lang), min_value=0, step=10, format="%.0f"),
             "max_price": st.column_config.NumberColumn(label("max_price", lang), min_value=0, step=10, format="%.0f"),
@@ -251,12 +225,6 @@ def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, A
             st.session_state.hotel_config = default_hotel_config()
             st.success(label("reset_done", lang))
     with c3:
-        st.download_button(
-            label("download_json", lang),
-            data=config_to_json_bytes(config),
-            file_name="hotel_config.json",
-            mime="application/json",
-            use_container_width=True,
-        )
+        st.download_button(label("download_json", lang), data=config_to_json_bytes(config), file_name="hotel_config.json", mime="application/json", use_container_width=True)
 
     return config
