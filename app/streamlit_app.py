@@ -48,8 +48,10 @@ def _export_language_selector(lang: str) -> str:
 
     if current_export_lang is None:
         st.session_state.export_language = lang
+        st.session_state.export_language_selectbox = lang
     elif previous_ui_lang and current_export_lang == previous_ui_lang and previous_ui_lang != lang:
         st.session_state.export_language = lang
+        st.session_state.export_language_selectbox = lang
 
     selected = st.selectbox(
         EXPORT_LANGUAGE_LABELS.get(lang, EXPORT_LANGUAGE_LABELS["en"]),
