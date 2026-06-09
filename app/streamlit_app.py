@@ -19,6 +19,13 @@ from src.validation import validate_all
 
 st.set_page_config(page_title="Hotel Pricing Engine", layout="wide")
 
+EXPORT_LANGUAGE_LABELS = {
+    "zh": "Excel 导出语言",
+    "en": "Excel export language",
+    "de": "Excel-Exportsprache",
+    "fr": "Langue d’export Excel",
+}
+
 
 def _language_selector() -> str:
     if "language" not in st.session_state:
@@ -33,6 +40,27 @@ def _language_selector() -> str:
     )
     st.session_state.language = selected_label
     return selected_label
+
+
+def _export_language_selector(lang: str) -> str:
+    previous_ui_lang = st.session_state.get("last_ui_language")
+    current_export_lang = st.session_state.get("export_language")
+
+    if current_export_lang is None:
+        st.session_state.export_language = lang
+    elif previous_ui_lang and current_export_lang == previous_ui_lang and previous_ui_lang != lang:
+        st.session_state.export_language = lang
+
+    selected = st.selectbox(
+        EXPORT_LANGUAGE_LABELS.get(lang, EXPORT_LANGUAGE_LABELS["en"]),
+        options=list(LANGUAGES.keys()),
+        format_func=lambda code: LANGUAGES[code],
+        index=list(LANGUAGES.keys()).index(st.session_state.export_language),
+        key="export_language_selectbox",
+    )
+    st.session_state.export_language = selected
+    st.session_state.last_ui_language = lang
+    return selected
 
 
 def _format_currency(value: float) -> str:
@@ -188,10 +216,11 @@ with tab_dashboard:
 
 with tab_recommendations:
     render_recommendations(recommendations, lang)
+    export_lang = _export_language_selector(lang)
     st.download_button(
         t("download_excel", lang),
-        data=build_excel_report(metrics, recommendations),
-        file_name="hotel_pricing_recommendations.xlsx",
+        data=build_excel_report(metrics, recommendations, lang=export_lang),
+        file_name=f"hotel_pricing_recommendations_{export_lang}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
