@@ -6,7 +6,7 @@ from io import BytesIO
 import pandas as pd
 import streamlit as st
 
-from .i18n import LANGUAGES, t
+from .i18n import LANGUAGES, t, translate_room_type
 
 
 A = {
@@ -139,6 +139,7 @@ def update_manual_flags(df: pd.DataFrame) -> pd.DataFrame:
 
 def to_editor_display(df: pd.DataFrame, lang: str) -> pd.DataFrame:
     display = df[DISPLAY_COLUMNS].copy()
+    display["room_type"] = display["room_type"].map(lambda value: translate_room_type(value, lang))
     display["action"] = display["action"].map(lambda value: t(value, lang))
     display["confidence"] = display["confidence"].map(lambda value: t(value, lang))
     display["manual_override"] = display["manual_override"].map(lambda value: BOOL_LABEL[bool(value)].get(lang, BOOL_LABEL[bool(value)]["en"]))
@@ -151,7 +152,6 @@ def from_editor_display(display: pd.DataFrame, lang: str) -> pd.DataFrame:
     reverse_columns = {clabel(column, lang): column for column in DISPLAY_COLUMNS}
     df = display.rename(columns=reverse_columns).copy()
     df["approval_status"] = df["approval_status"].map(lambda value: _reverse_value(STATUS, value, lang))
-    # action, confidence and push_status are displayed for context only and restored later by index if not editable.
     df["manual_override"] = df["manual_override"].map(lambda value: value in {BOOL_LABEL[True].get(lang), BOOL_LABEL[True].get("en"), True, "True", "true", "是"})
     return df
 
