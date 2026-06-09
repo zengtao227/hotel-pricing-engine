@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from .metrics import calculate_pickup
+from .price_rounding import round_to_price_ending
 
 
 def _action(current_price: float, recommended_price: float) -> str:
@@ -13,10 +14,6 @@ def _action(current_price: float, recommended_price: float) -> str:
     return "hold"
 
 
-def _round_price(price: float, step: int = 5) -> float:
-    return float(round(price / step) * step)
-
-
 def generate_recommendations(
     metrics: pd.DataFrame,
     bookings: pd.DataFrame,
@@ -24,6 +21,7 @@ def generate_recommendations(
     observation_date=None,
     horizon_days: int = 30,
     max_change_pct: float = 0.15,
+    price_rounding_strategy: str = "chinese_lucky",
 ) -> pd.DataFrame:
     """Generate simple explainable rule-based price recommendations."""
     prices = current_prices.copy()
@@ -131,7 +129,8 @@ def generate_recommendations(
             confidence = "low"
 
         change_pct = float(np.clip(change_pct, -max_change_pct, max_change_pct))
-        recommended_price = _round_price(current_price * (1 + change_pct))
+        raw_recommended_price = current_price * (1 + change_pct)
+        recommended_price = round_to_price_ending(raw_recommended_price, strategy=price_rounding_strategy)
         expected_revenue_delta = recommended_price * max(sold_rooms, 1) - current_price * max(sold_rooms, 1)
 
         if not reasons:
