@@ -12,11 +12,12 @@ ROOMS_BY_TYPE = {
     "Family Room": 12,
 }
 
-# Demo listed prices use China-friendly hotel price endings such as 168, 188, 268.
+# Demo listed prices represent a second-tier Chinese 4-star business hotel.
+# These are displayed/listed rates, not necessarily discounted OTA transaction prices.
 BASE_PRICES = {
-    "Standard Double": 168,
-    "Superior Double": 188,
-    "Family Room": 268,
+    "Standard Double": 388,
+    "Superior Double": 468,
+    "Family Room": 588,
 }
 
 
@@ -51,7 +52,7 @@ def build_demo_data(seed: int = 42):
     price_rows = []
     for stay_date in pd.date_range(observation_date, observation_date + timedelta(days=60), freq="D"):
         for room_type, base_price in BASE_PRICES.items():
-            weekend_uplift = 20 if stay_date.weekday() >= 5 else 0
+            weekend_uplift = 40 if stay_date.weekday() >= 5 else 0
             price_rows.append(
                 {
                     "hotel_id": hotel_id,
@@ -79,9 +80,9 @@ def build_demo_data(seed: int = 42):
                 booking_date = stay_date.date() - timedelta(days=lead_time)
                 nights = int(rng.choice([1, 1, 2, 2, 3], p=[0.45, 0.2, 0.2, 0.1, 0.05]))
                 check_out_date = stay_date.date() + timedelta(days=nights)
-                weekend_uplift = 20 if stay_date.weekday() >= 5 else 0
+                weekend_uplift = 40 if stay_date.weekday() >= 5 else 0
                 daily_rate = round_to_price_ending(
-                    BASE_PRICES[room_type] + weekend_uplift + int(rng.normal(0, 8)),
+                    BASE_PRICES[room_type] + weekend_uplift + int(rng.normal(0, 18)),
                     strategy="chinese_lucky",
                 )
                 cancelled = rng.random() < (0.17 if lead_time > 30 else 0.08)
