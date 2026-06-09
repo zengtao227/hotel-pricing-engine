@@ -3,6 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from .i18n import t, translate_room_type, translate_reason_list, translate_risk_list
@@ -195,7 +196,7 @@ def render_backtesting(
 
     daily = detail.groupby("stay_date", as_index=False)["static_revenue_delta"].sum()
     st.plotly_chart(
-        __import__("plotly.express").express.bar(daily, x="stay_date", y="static_revenue_delta", title=bt_label("chart", lang)),
+        px.bar(daily, x="stay_date", y="static_revenue_delta", title=bt_label("chart", lang)),
         use_container_width=True,
     )
 
