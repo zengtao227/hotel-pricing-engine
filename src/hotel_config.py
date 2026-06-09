@@ -165,7 +165,7 @@ def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, A
     room_df = room_config_dataframe(config, lang)
     edited = st.data_editor(
         room_df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={"enabled": st.column_config.CheckboxColumn(label("enabled", lang)), "room_name": st.column_config.TextColumn(label("room_name", lang)), "base_price": st.column_config.NumberColumn(label("base_price", lang), min_value=0, step=10, format="%.0f"), "min_price": st.column_config.NumberColumn(label("min_price", lang), min_value=0, step=10, format="%.0f"), "max_price": st.column_config.NumberColumn(label("max_price", lang), min_value=0, step=10, format="%.0f"), "weekend_uplift": st.column_config.NumberColumn(label("weekend_uplift", lang), min_value=0, step=10, format="%.0f")},
         disabled=["room_name"],
@@ -174,12 +174,12 @@ def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, A
     config["room_types"] = dataframe_to_room_config(edited)
 
     c1, c2, c3 = st.columns(3)
-    if c1.button(label("save_session", lang), use_container_width=True):
+    if c1.button(label("save_session", lang), width="stretch"):
         st.session_state.hotel_config = config
         st.success(label("applied", lang))
-    if c2.button(label("reset_default", lang), use_container_width=True):
+    if c2.button(label("reset_default", lang), width="stretch"):
         st.session_state.hotel_config = default_hotel_config()
         st.success(label("reset_done", lang))
         config = st.session_state.hotel_config
-    c3.download_button(label("download_json", lang), data=config_to_json_bytes(config), file_name="hotel_config.json", mime="application/json", use_container_width=True)
+    c3.download_button(label("download_json", lang), data=config_to_json_bytes(config), file_name="hotel_config.json", mime="application/json", width="stretch")
     return config

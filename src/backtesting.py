@@ -183,7 +183,7 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
     c4.metric(bt_label("revenue_delta_pct", lang), f"{summary['revenue_delta_pct']:.1%}")
 
     daily = detail.groupby("stay_date", as_index=False)["static_revenue_delta"].sum()
-    st.plotly_chart(px.bar(daily, x="stay_date", y="static_revenue_delta", title=bt_label("chart", lang)), use_container_width=True)
+    st.plotly_chart(px.bar(daily, x="stay_date", y="static_revenue_delta", title=bt_label("chart", lang)), width="stretch")
     st.subheader(bt_label("details", lang))
-    st.dataframe(localized_backtest_detail(detail, lang), use_container_width=True, hide_index=True)
+    st.dataframe(localized_backtest_detail(detail, lang), width="stretch", hide_index=True)
     st.download_button(bt_label("download", lang), data=backtest_excel_bytes(detail, lang), file_name="hotel_pricing_backtest.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
