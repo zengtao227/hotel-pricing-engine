@@ -6,16 +6,21 @@
 
 ## 当前状态
 
-项目已经从纯需求定义推进到 **Streamlit MVP 原型**：
+项目已经推进到 **Streamlit MVP 原型**：
 
 - 可以加载酒店订单、库存和当前价格 CSV
 - 可以自动生成 demo 数据
-- 可以计算 Occupancy、ADR、RevPAR 等核心指标
+- 可以计算 Occupancy、ADR、RevPAR、Pickup 等核心指标
 - 可以生成未来日期的规则型调价建议
-- 可以导出 Excel 调价建议报表
+- 可以导出多语言 Excel 调价建议报表
 - 可以转换 Kaggle Hotel Booking Demand 数据集为 MVP 格式
 - 支持中文、英文、德文、法文界面切换
-- 新增销售演示版 Dashboard，用于客户或教学演示
+- 支持销售演示版 Dashboard
+- 支持中国酒店演示用 6/8/9 价格尾数规则
+- 支持酒店配置：房型、基准价、最低价、最高价、周末加价
+- 支持价格审批与发布演示：最终批准价、人工修改标记、模拟推送、审计日志
+- 支持审批与推送日志持久化到本地 CSV
+- 支持静态销量回测分析，并可导出回测明细 Excel
 
 ## 快速启动
 
@@ -40,21 +45,16 @@ streamlit run app/streamlit_app.py
 
 ## MVP 范围
 
-第一阶段只做决策支持，不做自动改价：
+当前阶段采用 human-in-the-loop 路线：系统生成建议，人工复核最终批准价，再进入发布或导出流程。
 
 - 汇总历史订房、成交价格、入住日期、取消状态和房型数据
-- 预测指定入住日期、房型和提前期下的未来需求
-- 估计不同价格下的成交概率或预计销量
-- 对候选价格做收益模拟，输出推荐价
+- 计算房型和日期级收益指标
+- 生成可解释的当前价、推荐价和建议动作
 - 给出推荐理由、置信度和人工复核提示
-- 生成每日或每周的调价建议报表
-
-## 暂不做
-
-- 不直接连接 PMS、OTA 或支付系统
-- 不自动发布价格到 Booking、携程、官网等渠道
-- 不承诺一开始就使用复杂深度学习模型
-- 不使用无法解释的黑箱结果直接替代人工判断
+- 支持价格尾数规则和价格上下限
+- 支持销售总监或店长审核最终批准价
+- 支持模拟推送和审计日志
+- 支持静态销量回测
 
 ## 核心指标
 
@@ -96,6 +96,7 @@ python scripts/create_demo_data.py --source data/raw/hotel_bookings.csv --output
 - [docs/mvp-implementation.md](docs/mvp-implementation.md): MVP 运行和实现说明
 - [docs/deployment.md](docs/deployment.md): VPS 部署说明
 - [docs/i18n-dashboard.md](docs/i18n-dashboard.md): 多语言界面和销售演示看板说明
+- [docs/price-approval-and-publishing.md](docs/price-approval-and-publishing.md): 价格审批与发布使用手册
 
 ## 商业化方向
 
