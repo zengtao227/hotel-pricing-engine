@@ -21,7 +21,7 @@ A = {
     "reset": {"zh": "重置审批表", "en": "Reset review table", "de": "Prüftabelle zurücksetzen", "fr": "Réinitialiser le tableau"},
     "simulate_push": {"zh": "一键模拟推送已批准价格", "en": "Simulate publishing approved prices", "de": "Freigegebene Preise simuliert veröffentlichen", "fr": "Simuler la publication des prix validés"},
     "download_audit": {"zh": "下载审批与推送日志", "en": "Download approval and publishing log", "de": "Freigabe- und Veröffentlichungslog herunterladen", "fr": "Télécharger le journal de validation et publication"},
-    "no_rows": {"zh": "还没有已批准且勾选的价格可推送。", "en": "No approved and selected prices to publish.", "de": "Keine freigegebenen und ausgewählten Preise zur Veröffentlichung.", "fr": "Aucun prix validé et sélectionné à publier."},
+    "no_rows": {"zh": "还没有新的、已批准且勾选的价格可推送。", "en": "No new approved and selected prices to publish.", "de": "Keine neuen freigegebenen und ausgewählten Preise zur Veröffentlichung.", "fr": "Aucun nouveau prix validé et sélectionné à publier."},
     "push_success": {"zh": "模拟推送完成", "en": "Simulated publishing completed", "de": "Simulierte Veröffentlichung abgeschlossen", "fr": "Publication simulée terminée"},
     "editor_caption": {"zh": "可编辑列：是否推送、最终批准价、审核状态、审核备注。手动修改最终价后会自动标记为人工修改。", "en": "Editable columns: publish, approved price, review status and comment. Manual price changes are automatically flagged.", "de": "Editierbare Spalten: veröffentlichen, freigegebener Preis, Prüfstatus und Kommentar. Manuelle Preisänderungen werden automatisch markiert.", "fr": "Colonnes modifiables : publier, prix validé, statut et commentaire. Les modifications manuelles sont signalées automatiquement."},
     "preview_caption": {"zh": "颜色提示：黄色 = 人工修改；绿色 = 已推送；红色 = 已拒绝。", "en": "Colors: yellow = manual override; green = published; red = rejected.", "de": "Farben: gelb = manuelle Änderung; grün = veröffentlicht; rot = abgelehnt.", "fr": "Couleurs : jaune = modification manuelle ; vert = publié ; rouge = rejeté."},
@@ -45,39 +45,10 @@ COL = {
     "pushed_at": {"zh": "推送时间", "en": "Published At", "de": "Veröffentlicht am", "fr": "Publié le"},
 }
 
-STATUS = {
-    "pending": {"zh": "待审核", "en": "Pending", "de": "Ausstehend", "fr": "En attente"},
-    "approved": {"zh": "已批准", "en": "Approved", "de": "Freigegeben", "fr": "Validé"},
-    "rejected": {"zh": "已拒绝", "en": "Rejected", "de": "Abgelehnt", "fr": "Rejeté"},
-}
-
-PUSH_STATUS = {
-    "not_pushed": {"zh": "未推送", "en": "Not published", "de": "Nicht veröffentlicht", "fr": "Non publié"},
-    "pushed": {"zh": "已推送", "en": "Published", "de": "Veröffentlicht", "fr": "Publié"},
-    "skipped": {"zh": "已跳过", "en": "Skipped", "de": "Übersprungen", "fr": "Ignoré"},
-}
-
-BOOL_LABEL = {
-    True: {"zh": "是", "en": "Yes", "de": "Ja", "fr": "Oui"},
-    False: {"zh": "否", "en": "No", "de": "Nein", "fr": "Non"},
-}
-
-DISPLAY_COLUMNS = [
-    "selected",
-    "stay_date",
-    "hotel_id",
-    "room_type",
-    "current_price",
-    "recommended_price",
-    "approved_price",
-    "action",
-    "confidence",
-    "manual_override",
-    "approval_status",
-    "review_comment",
-    "push_status",
-    "pushed_at",
-]
+STATUS = {"pending": {"zh": "待审核", "en": "Pending", "de": "Ausstehend", "fr": "En attente"}, "approved": {"zh": "已批准", "en": "Approved", "de": "Freigegeben", "fr": "Validé"}, "rejected": {"zh": "已拒绝", "en": "Rejected", "de": "Abgelehnt", "fr": "Rejeté"}}
+PUSH_STATUS = {"not_pushed": {"zh": "未推送", "en": "Not published", "de": "Nicht veröffentlicht", "fr": "Non publié"}, "pushed": {"zh": "已推送", "en": "Published", "de": "Veröffentlicht", "fr": "Publié"}, "skipped": {"zh": "已跳过", "en": "Skipped", "de": "Übersprungen", "fr": "Ignoré"}}
+BOOL_LABEL = {True: {"zh": "是", "en": "Yes", "de": "Ja", "fr": "Oui"}, False: {"zh": "否", "en": "No", "de": "Nein", "fr": "Non"}}
+DISPLAY_COLUMNS = ["selected", "stay_date", "hotel_id", "room_type", "current_price", "recommended_price", "approved_price", "action", "confidence", "manual_override", "approval_status", "review_comment", "push_status", "pushed_at"]
 
 
 def alabel(key: str, lang: str = "zh") -> str:
@@ -114,8 +85,7 @@ def build_approval_table(recommendations: pd.DataFrame) -> pd.DataFrame:
 
 def approval_signature(recommendations: pd.DataFrame) -> str:
     cols = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price"]
-    source = recommendations[cols].astype(str).to_csv(index=False)
-    return str(hash(source))
+    return str(hash(recommendations[cols].astype(str).to_csv(index=False)))
 
 
 def accept_price_changes(df: pd.DataFrame) -> pd.DataFrame:
@@ -132,8 +102,7 @@ def update_manual_flags(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     out["approved_price"] = pd.to_numeric(out["approved_price"], errors="coerce").fillna(out["recommended_price"])
     out["manual_override"] = (out["approved_price"].astype(float) - out["recommended_price"].astype(float)).abs() > 0.01
-    changed_pending = out["manual_override"] & (out["approval_status"] == "pending")
-    out.loc[changed_pending, "approval_status"] = "approved"
+    out.loc[out["manual_override"] & (out["approval_status"] == "pending"), "approval_status"] = "approved"
     return out
 
 
@@ -149,8 +118,7 @@ def to_editor_display(df: pd.DataFrame, lang: str) -> pd.DataFrame:
 
 
 def from_editor_display(display: pd.DataFrame, lang: str) -> pd.DataFrame:
-    reverse_columns = {clabel(column, lang): column for column in DISPLAY_COLUMNS}
-    df = display.rename(columns=reverse_columns).copy()
+    df = display.rename(columns={clabel(column, lang): column for column in DISPLAY_COLUMNS}).copy()
     df["approval_status"] = df["approval_status"].map(lambda value: _reverse_value(STATUS, value, lang))
     df["manual_override"] = df["manual_override"].map(lambda value: value in {BOOL_LABEL[True].get(lang), BOOL_LABEL[True].get("en"), True, "True", "true", "是"})
     return df
@@ -158,12 +126,7 @@ def from_editor_display(display: pd.DataFrame, lang: str) -> pd.DataFrame:
 
 def editor_column_config(lang: str):
     status_labels = [_value_label(STATUS, key, lang) for key in ["pending", "approved", "rejected"]]
-    return {
-        clabel("selected", lang): st.column_config.CheckboxColumn(clabel("selected", lang)),
-        clabel("approved_price", lang): st.column_config.NumberColumn(clabel("approved_price", lang), min_value=0, step=1, format="%.0f"),
-        clabel("approval_status", lang): st.column_config.SelectboxColumn(clabel("approval_status", lang), options=status_labels),
-        clabel("review_comment", lang): st.column_config.TextColumn(clabel("review_comment", lang)),
-    }
+    return {clabel("selected", lang): st.column_config.CheckboxColumn(clabel("selected", lang)), clabel("approved_price", lang): st.column_config.NumberColumn(clabel("approved_price", lang), min_value=0, step=1, format="%.0f"), clabel("approval_status", lang): st.column_config.SelectboxColumn(clabel("approval_status", lang), options=status_labels), clabel("review_comment", lang): st.column_config.TextColumn(clabel("review_comment", lang))}
 
 
 def disabled_columns(lang: str) -> list[str]:
@@ -175,8 +138,7 @@ def styled_preview(df: pd.DataFrame, lang: str):
     display = to_editor_display(df, lang)
 
     def style_row(row):
-        idx = row.name
-        internal = df.iloc[idx]
+        internal = df.iloc[row.name]
         if internal["push_status"] == "pushed":
             return ["background-color: #d1e7dd"] * len(row)
         if internal["approval_status"] == "rejected":
@@ -191,28 +153,12 @@ def styled_preview(df: pd.DataFrame, lang: str):
 def simulate_push(df: pd.DataFrame, lang: str, actor: str = "demo_user") -> tuple[pd.DataFrame, pd.DataFrame]:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     out = update_manual_flags(df)
-    mask = (out["selected"] == True) & (out["approval_status"] == "approved")
+    mask = (out["selected"] == True) & (out["approval_status"] == "approved") & (out["push_status"] != "pushed")
     rows = []
     for idx, row in out[mask].iterrows():
         out.at[idx, "push_status"] = "pushed"
         out.at[idx, "pushed_at"] = now
-        rows.append(
-            {
-                "timestamp": now,
-                "actor": actor,
-                "hotel_id": row["hotel_id"],
-                "room_type": row["room_type"],
-                "stay_date": row["stay_date"],
-                "current_price": row["current_price"],
-                "recommended_price": row["recommended_price"],
-                "approved_price": row["approved_price"],
-                "manual_override": bool(row["manual_override"]),
-                "approval_status": row["approval_status"],
-                "push_status": "pushed",
-                "review_comment": row["review_comment"],
-                "target_system": "SIMULATED_CHANNEL_MANAGER",
-            }
-        )
+        rows.append({"timestamp": now, "actor": actor, "hotel_id": row["hotel_id"], "room_type": row["room_type"], "stay_date": row["stay_date"], "current_price": row["current_price"], "recommended_price": row["recommended_price"], "approved_price": row["approved_price"], "manual_override": bool(row["manual_override"]), "approval_status": row["approval_status"], "push_status": "pushed", "review_comment": row["review_comment"], "target_system": "SIMULATED_CHANNEL_MANAGER"})
     return out, pd.DataFrame(rows)
 
 
@@ -222,8 +168,7 @@ def audit_log_bytes(log: pd.DataFrame) -> bytes:
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         log.to_excel(writer, sheet_name="approval_log", index=False)
-        workbook = writer.book
-        sheet = workbook["approval_log"]
+        sheet = writer.book["approval_log"]
         sheet.freeze_panes = "A2"
         for column_cells in sheet.columns:
             max_length = max(len(str(cell.value or "")) for cell in column_cells)
