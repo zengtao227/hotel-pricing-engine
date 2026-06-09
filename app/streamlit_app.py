@@ -9,9 +9,24 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from src.approval_workflow import (
+    accept_price_changes,
+    alabel,
+    approval_signature,
+    audit_log_bytes,
+    build_approval_table,
+    disabled_columns,
+    editor_column_config,
+    from_editor_display,
+    simulate_push,
+    styled_preview,
+    to_editor_display,
+    update_manual_flags,
+)
 from src.data_loader import load_demo_data, load_hotel_data
 from src.i18n import LANGUAGES, localized_recommendations, t
 from src.metrics import calculate_daily_metrics, summarize_overview
+from src.price_rounding import PRICE_ROUNDING_STRATEGIES
 from src.pricing_engine import generate_recommendations
 from src.report_export import build_excel_report
 from src.ui_help import h, recommendation_column_config, render_interpretation_expander
@@ -25,6 +40,20 @@ EXPORT_LANGUAGE_LABELS = {
     "en": "Excel export language",
     "de": "Excel-Exportsprache",
     "fr": "Langue d’export Excel",
+}
+
+PRICE_ROUNDING_LABELS = {
+    "zh": "价格尾数规则",
+    "en": "Price ending style",
+    "de": "Preisendungsregel",
+    "fr": "Style de terminaison du prix",
+}
+
+PRICE_ROUNDING_HELP = {
+    "zh": "把算法计算出的原始推荐价转换成更像酒店挂牌价的数字。中国演示建议使用 6/8/9 尾数，例如 168、188、269；欧美场景可用按 5 或按 1 取整。",
+    "en": "Converts raw algorithmic recommendations into market-friendly displayed prices. For China demos, use 6/8/9 endings such as 168, 188 or 269. For western demos, nearest 5 or nearest 1 may be more suitable.",
+    "de": "Wandelt rohe algorithmische Empfehlungen in marktübliche angezeigte Preise um. Für China-Demos 6/8/9-Endungen wie 168, 188 oder 269 verwenden; für westliche Demos eher auf 5 oder 1 runden.",
+    "fr": "Convertit les recommandations brutes en prix affichés plus naturels. Pour une démonstration Chine, utilisez les terminaisons 6/8/9 comme 168, 188 ou 269. Pour l’Europe, l’arrondi à 5 ou à 1 peut être plus adapté.",
 }
 
 
@@ -158,6 +187,66 @@ def render_recommendations(recommendations: pd.DataFrame, lang: str) -> None:
     _show_recommendation_table(filtered, lang)
 
 
+def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -> None:
+    st.subheader(alabel("tab", lang))
+    st.write(alabel("intro", lang))
+
+    signature = approval_signature(recommendations)
+    if st.session_state.get("approval_signature") != signature or "approval_table" not in st.session_state:
+        st.session_state.approval_table = build_approval_table(recommendations)
+        st.session_state.approval_signature = signature
+        st.session_state.approval_log = pd.DataFrame()
+
+    c1, c2 = st.columns([0.35, 0.65])
+    with c1:
+        if st.button(alabel("bulk_accept", lang), use_container_width=True):
+            st.session_state.approval_table = accept_price_changes(st.session_state.approval_table)
+    with c2:
+        if st.button(alabel("reset", lang), use_container_width=True):
+            st.session_state.approval_table = build_approval_table(recommendations)
+            st.session_state.approval_log = pd.DataFrame()
+
+    st.caption(alabel("editor_caption", lang))
+    editor_display = to_editor_display(st.session_state.approval_table, lang)
+    edited_display = st.data_editor(
+        editor_display,
+        use_container_width=True,
+        hide_index=True,
+        column_config=editor_column_config(lang),
+        disabled=disabled_columns(lang),
+        key="approval_editor",
+    )
+
+    edited_internal = from_editor_display(edited_display, lang)
+    approval_table = st.session_state.approval_table.copy()
+    for column in ["selected", "approved_price", "approval_status", "review_comment"]:
+        approval_table[column] = edited_internal[column].values
+    st.session_state.approval_table = update_manual_flags(approval_table)
+
+    st.caption(alabel("preview_caption", lang))
+    st.dataframe(styled_preview(st.session_state.approval_table, lang), use_container_width=True, hide_index=True)
+
+    if st.button(alabel("simulate_push", lang), type="primary", use_container_width=True):
+        pushed_table, log_rows = simulate_push(st.session_state.approval_table, lang)
+        st.session_state.approval_table = pushed_table
+        if log_rows.empty:
+            st.info(alabel("no_rows", lang))
+        else:
+            st.session_state.approval_log = pd.concat([st.session_state.approval_log, log_rows], ignore_index=True)
+            st.success(f"{alabel('push_success', lang)}: {len(log_rows)}")
+
+    if st.session_state.approval_log.empty:
+        st.info(alabel("audit_empty", lang))
+    else:
+        st.dataframe(st.session_state.approval_log, use_container_width=True, hide_index=True)
+        st.download_button(
+            alabel("download_audit", lang),
+            data=audit_log_bytes(st.session_state.approval_log),
+            file_name="price_approval_publishing_log.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+
 def render_data_preview(hotel_data, lang: str) -> None:
     st.subheader(t("data_preview", lang))
     with st.expander(t("bookings", lang), expanded=False):
@@ -202,6 +291,13 @@ with st.sidebar:
         step=0.05,
         help=h("max_price_change_help", lang),
     )
+    price_rounding_strategy = st.selectbox(
+        PRICE_ROUNDING_LABELS.get(lang, PRICE_ROUNDING_LABELS["en"]),
+        options=list(PRICE_ROUNDING_STRATEGIES.keys()),
+        format_func=lambda key: PRICE_ROUNDING_STRATEGIES[key].get(lang, PRICE_ROUNDING_STRATEGIES[key]["en"]),
+        index=0,
+        help=PRICE_ROUNDING_HELP.get(lang, PRICE_ROUNDING_HELP["en"]),
+    )
 
 try:
     if use_demo:
@@ -232,12 +328,13 @@ recommendations = generate_recommendations(
     observation_date=observation_date,
     horizon_days=horizon_days,
     max_change_pct=max_change_pct,
+    price_rounding_strategy=price_rounding_strategy,
 )
 
 overview = summarize_overview(metrics)
 
-tab_dashboard, tab_recommendations, tab_data = st.tabs(
-    [t("sales_dashboard", lang), t("recommendations", lang), t("data_preview", lang)]
+tab_dashboard, tab_recommendations, tab_approval, tab_data = st.tabs(
+    [t("sales_dashboard", lang), t("recommendations", lang), alabel("tab", lang), t("data_preview", lang)]
 )
 
 with tab_dashboard:
@@ -252,6 +349,9 @@ with tab_recommendations:
         file_name=f"hotel_pricing_recommendations_{export_lang}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+with tab_approval:
+    render_price_approval_publishing(recommendations, lang)
 
 with tab_data:
     render_data_preview(hotel_data, lang)
