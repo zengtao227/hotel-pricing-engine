@@ -14,6 +14,8 @@
 - 可以生成未来日期的规则型调价建议
 - 可以导出 Excel 调价建议报表
 - 可以转换 Kaggle Hotel Booking Demand 数据集为 MVP 格式
+- 支持中文、英文、德文、法文界面切换
+- 新增销售演示版 Dashboard，用于客户或教学演示
 
 ## 快速启动
 
@@ -92,6 +94,8 @@ python scripts/create_demo_data.py --source data/raw/hotel_bookings.csv --output
 - [docs/roadmap.md](docs/roadmap.md): 阶段计划
 - [docs/open-questions.md](docs/open-questions.md): 待确认问题
 - [docs/mvp-implementation.md](docs/mvp-implementation.md): MVP 运行和实现说明
+- [docs/deployment.md](docs/deployment.md): VPS 部署说明
+- [docs/i18n-dashboard.md](docs/i18n-dashboard.md): 多语言界面和销售演示看板说明
 
 ## 商业化方向
 
