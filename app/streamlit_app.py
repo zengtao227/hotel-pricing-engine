@@ -14,6 +14,7 @@ from src.i18n import LANGUAGES, localized_recommendations, t
 from src.metrics import calculate_daily_metrics, summarize_overview
 from src.pricing_engine import generate_recommendations
 from src.report_export import build_excel_report
+from src.ui_help import h, recommendation_column_config, render_interpretation_expander
 from src.validation import validate_all
 
 
@@ -79,9 +80,20 @@ def _recommendation_score(row) -> tuple[int, float]:
     return confidence_score, revenue_delta
 
 
+def _show_recommendation_table(df: pd.DataFrame, lang: str) -> None:
+    localized = localized_recommendations(df, lang)
+    st.dataframe(
+        localized,
+        use_container_width=True,
+        hide_index=True,
+        column_config=recommendation_column_config(lang),
+    )
+
+
 def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame, overview: dict, lang: str) -> None:
     st.subheader(t("sales_dashboard", lang))
     st.write(t("summary_text", lang))
+    render_interpretation_expander(lang)
 
     price_change_count = int((recommendations["action"] != "hold").sum()) if not recommendations.empty else 0
     high_confidence_count = int((recommendations["confidence"] == "high").sum()) if not recommendations.empty else 0
@@ -128,11 +140,12 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         priority["_confidence_score"] = priority.apply(lambda row: _recommendation_score(row)[0], axis=1)
         priority["_revenue_abs"] = priority.apply(lambda row: _recommendation_score(row)[1], axis=1)
         priority = priority.sort_values(["_confidence_score", "_revenue_abs"], ascending=False).drop(columns=["_confidence_score", "_revenue_abs"])
-        st.dataframe(localized_recommendations(priority.head(10), lang), use_container_width=True, hide_index=True)
+        _show_recommendation_table(priority.head(10), lang)
 
 
 def render_recommendations(recommendations: pd.DataFrame, lang: str) -> None:
     st.subheader(t("recommendations", lang))
+    render_interpretation_expander(lang)
 
     raw_actions = sorted(recommendations["action"].unique())
     action_filter = st.multiselect(
@@ -142,7 +155,7 @@ def render_recommendations(recommendations: pd.DataFrame, lang: str) -> None:
         format_func=lambda value: t(value, lang),
     )
     filtered = recommendations[recommendations["action"].isin(action_filter)].copy()
-    st.dataframe(localized_recommendations(filtered, lang), use_container_width=True, hide_index=True)
+    _show_recommendation_table(filtered, lang)
 
 
 def render_data_preview(hotel_data, lang: str) -> None:
@@ -173,8 +186,22 @@ with st.sidebar:
         inventory_file = st.file_uploader("inventory.csv", type=["csv"])
         current_prices_file = st.file_uploader("current_prices.csv", type=["csv"])
 
-    horizon_days = st.slider(t("recommendation_horizon", lang), min_value=7, max_value=60, value=30, step=7)
-    max_change_pct = st.slider(t("max_price_change", lang), min_value=0.05, max_value=0.30, value=0.15, step=0.05)
+    horizon_days = st.slider(
+        t("recommendation_horizon", lang),
+        min_value=7,
+        max_value=60,
+        value=30,
+        step=7,
+        help=h("recommendation_horizon_help", lang),
+    )
+    max_change_pct = st.slider(
+        t("max_price_change", lang),
+        min_value=0.05,
+        max_value=0.30,
+        value=0.15,
+        step=0.05,
+        help=h("max_price_change_help", lang),
+    )
 
 try:
     if use_demo:
