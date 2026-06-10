@@ -142,19 +142,19 @@ def recommendation_column_config(lang: str):
     return {
         t("column_current_price", lang): st.column_config.NumberColumn(
             t("column_current_price", lang),
-            format="%.0f",
+            format="%.2f",
         ),
         t("column_recommended_price", lang): st.column_config.NumberColumn(
             t("column_recommended_price", lang),
-            format="%.0f",
+            format="%.2f",
         ),
         t("column_price_floor", lang): st.column_config.NumberColumn(
             t("column_price_floor", lang),
-            format="%.0f",
+            format="%.2f",
         ),
         t("column_price_ceiling", lang): st.column_config.NumberColumn(
             t("column_price_ceiling", lang),
-            format="%.0f",
+            format="%.2f",
         ),
         t("column_action", lang): st.column_config.TextColumn(
             t("column_action", lang),
@@ -163,17 +163,17 @@ def recommendation_column_config(lang: str):
         t("column_expected_revenue_delta", lang): st.column_config.NumberColumn(
             t("column_expected_revenue_delta", lang),
             help=h("expected_revenue_delta_help", lang),
-            format="%.0f",
+            format="%.2f",
         ),
         t("column_current_expected_revenue", lang): st.column_config.NumberColumn(
             t("column_current_expected_revenue", lang),
             help=h("expected_revenue_help", lang),
-            format="%.0f",
+            format="%.2f",
         ),
         t("column_recommended_expected_revenue", lang): st.column_config.NumberColumn(
             t("column_recommended_expected_revenue", lang),
             help=h("expected_revenue_help", lang),
-            format="%.0f",
+            format="%.2f",
         ),
         t("column_demand_forecast_at_current_price", lang): st.column_config.NumberColumn(
             t("column_demand_forecast_at_current_price", lang),

@@ -1024,14 +1024,14 @@ def _render_attention_cards(df: pd.DataFrame, lang: str) -> None:
         current_price = float(row.get("current_price", 0) or 0)
         recommended_price = float(row.get("recommended_price", 0) or 0)
         delta = float(row.get("expected_revenue_delta", 0) or 0)
-        delta_text = f"+{delta:,.0f}" if delta > 0 else f"{delta:,.0f}"
+        delta_text = f"+{delta:,.2f}" if delta > 0 else f"{delta:,.2f}"
         note = _attention_note(row, lang)
         revenue_label = t("column_expected_revenue_delta", lang)
         card_html.append(
             f'<div class="hpe-attention-card hpe-attention-{status}">'
             f'<div class="hpe-attention-badge">{escape(_attention_badge(status, lang))}</div>'
             f'<div class="hpe-attention-title">{escape(stay_date)} · {escape(room)} · {escape(action)}</div>'
-            f'<div class="hpe-attention-meta">{current_price:,.0f} → {recommended_price:,.0f} · '
+            f'<div class="hpe-attention-meta">{current_price:,.2f} → {recommended_price:,.2f} · '
             f'{escape(revenue_label)} {escape(delta_text)}</div>'
             f'<div class="hpe-attention-note">{escape(note)}</div>'
             "</div>"
@@ -1285,8 +1285,8 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     else:
         # 配置审批日志的列格式
         audit_log_column_config = {
-            "current_price": st.column_config.NumberColumn("当前价" if lang == "zh" else "Current Price", format="%.0f"),
-            "recommended_price": st.column_config.NumberColumn("系统推荐价" if lang == "zh" else "Recommended Price", format="%.0f"),
+            "current_price": st.column_config.NumberColumn("当前价" if lang == "zh" else "Current Price", format="%.2f"),
+            "recommended_price": st.column_config.NumberColumn("系统推荐价" if lang == "zh" else "Recommended Price", format="%.2f"),
             "approved_price": st.column_config.NumberColumn("最终批准价" if lang == "zh" else "Approved Price", format="%.0f"),
         }
         st.dataframe(
