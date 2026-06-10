@@ -17,3 +17,12 @@ PPTX/
 
 # Presentation screenshots stay on VPS only
 Presentation/assets/
+
+# Local dev artifacts — never commit
+superpowers.db
+.venv-screenshot/
+.ruff_cache/
+docs/mockup-*.html
+app/streamlit_old.py
+scripts/auto_screenshot.py
+.vscode/
