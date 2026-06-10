@@ -933,17 +933,22 @@ def _recommendation_attention_status(row: pd.Series) -> str:
 def _styled_recommendations(df: pd.DataFrame, localized: pd.DataFrame, ui_theme: str):
     def style_row(row):
         source = df.loc[row.name]
-        status = _recommendation_attention_status(source)
-        if not status:
+        action = str(source.get("action", "") or "")
+        has_risk = bool(str(source.get("risk_flags", "") or "").strip())
+
+        bg_key = action if action in ("increase", "decrease", "hold") else ""
+        background = status_row_background(bg_key, ui_theme) if bg_key else ""
+        border = status_row_border("danger" if has_risk else bg_key, ui_theme)
+
+        if not background and border == "transparent":
             return [""] * len(row)
-        background = status_row_background(status, ui_theme)
-        border = status_row_border(status, ui_theme)
         return [f"background-color: {background}; border-left: 4px solid {border};"] * len(row)
 
     return localized.style.apply(style_row, axis=1)
 
 
 def _show_recommendation_table(df: pd.DataFrame, lang: str, ui_theme: str) -> None:
+    st.caption(t("table_legend", lang), unsafe_allow_html=True)
     localized = localized_recommendations(df, lang)
     st.dataframe(
         _styled_recommendations(df, localized, ui_theme),
@@ -1207,8 +1212,20 @@ def render_recommendations(recommendations: pd.DataFrame, lang: str, ui_theme: s
         options=raw_actions,
         default=raw_actions,
         format_func=lambda value: t(value, lang),
+        help=t("filter_actions_help", lang),
     )
     filtered = recommendations[recommendations["action"].isin(action_filter)].copy()
+
+    # Sort: risk rows first, then by action order (increase → decrease → hold), then by |revenue delta| desc
+    if not filtered.empty:
+        action_order = {"increase": 0, "decrease": 1, "hold": 2}
+        filtered["_has_risk"] = filtered["risk_flags"].fillna("").astype(str).str.strip().ne("").astype(int)
+        filtered["_action_order"] = filtered["action"].map(action_order).fillna(9)
+        filtered["_rev_abs"] = pd.to_numeric(filtered.get("expected_revenue_delta", 0), errors="coerce").abs().fillna(0)
+        filtered = filtered.sort_values(
+            ["_has_risk", "_action_order", "_rev_abs"], ascending=[False, True, False]
+        ).drop(columns=["_has_risk", "_action_order", "_rev_abs"])
+
     _show_attention_summary(filtered, lang)
     _render_attention_cards(filtered, lang)
     _show_recommendation_table(filtered, lang, ui_theme)

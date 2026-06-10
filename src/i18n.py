@@ -26,6 +26,18 @@ TRANSLATIONS = {
     "revpar_trend": {"zh": "每日 RevPAR 趋势", "en": "Daily RevPAR Trend", "de": "Täglicher RevPAR-Trend", "fr": "Tendance RevPAR quotidienne"},
     "avg_revpar_by_date": {"zh": "每日 RevPAR（每间可售房平均收入）", "en": "Average RevPAR by stay date", "de": "Durchschnittlicher RevPAR nach Aufenthaltstag", "fr": "RevPAR moyen par date de séjour"},
     "filter_actions": {"zh": "筛选动作", "en": "Filter actions", "de": "Aktionen filtern", "fr": "Filtrer les actions"},
+    "filter_actions_help": {
+        "zh": "按建议动作过滤推荐列表。\n\n🟢 上调：系统建议提高当前房价，预计可增加收益\n🔴 下调：系统建议降低房价，以提高未来售出间夜数\n🔵 保持：当前价格合理，无需调整\n\n可多选；不勾选则不显示任何结果。",
+        "en": "Filter the recommendation list by suggested action.\n\n🟢 Increase: raise the current rate to capture more revenue\n🔴 Decrease: lower the rate to improve future sell-through\n🔵 Hold: current price is appropriate, no change needed\n\nMultiple selections allowed; deselecting all hides all rows.",
+        "de": "Empfehlungsliste nach Aktion filtern.\n\n🟢 Erhöhen: Preis anheben für mehr Umsatz\n🔴 Senken: Preis senken für bessere Auslastung\n🔵 Halten: Aktueller Preis ist angemessen\n\nMehrfachauswahl möglich.",
+        "fr": "Filtrer les recommandations par action suggérée.\n\n🟢 Augmenter: hausser le tarif pour accroître les revenus\n🔴 Baisser: réduire le tarif pour améliorer le taux d'occupation\n🔵 Maintenir: le prix actuel est approprié\n\nSélection multiple possible.",
+    },
+    "table_legend": {
+        "zh": "🟢 上调 &nbsp;&nbsp; 🔴 下调 &nbsp;&nbsp; 🔵 保持 &nbsp;&nbsp; 红色边框 = 有风险提示，优先处理",
+        "en": "🟢 Increase &nbsp;&nbsp; 🔴 Decrease &nbsp;&nbsp; 🔵 Hold &nbsp;&nbsp; Red border = risk flag, review first",
+        "de": "🟢 Erhöhen &nbsp;&nbsp; 🔴 Senken &nbsp;&nbsp; 🔵 Halten &nbsp;&nbsp; Roter Rand = Risikohinweis",
+        "fr": "🟢 Augmenter &nbsp;&nbsp; 🔴 Baisser &nbsp;&nbsp; 🔵 Maintenir &nbsp;&nbsp; Bordure rouge = alerte risque",
+    },
     "download_excel": {"zh": "下载 Excel 报表", "en": "Download Excel report", "de": "Excel-Bericht herunterladen", "fr": "Télécharger le rapport Excel"},
     "bookings": {"zh": "订单", "en": "Bookings", "de": "Buchungen", "fr": "Réservations"},
     "inventory": {"zh": "库存", "en": "Inventory", "de": "Bestand", "fr": "Inventaire"},
