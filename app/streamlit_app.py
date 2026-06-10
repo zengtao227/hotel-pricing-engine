@@ -1078,21 +1078,57 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         st.subheader(t("pricing_actions", lang))
         action_counts = recommendations["action"].value_counts().rename_axis("action").reset_index(name="count")
         action_counts["action_label"] = action_counts["action"].map(lambda value: t(value, lang))
+        
+        # 语义化配色：上调用绿色，保持用蓝色，下调用红色
+        if ui_theme == "dark":
+            action_color_map = {
+                t("increase", lang): "#34D399",  # 青绿色 - 上调
+                t("hold", lang): "#60A5FA",      # 蓝色 - 保持
+                t("decrease", lang): "#FC8181",  # 玫瑰红 - 下调
+            }
+        else:
+            action_color_map = {
+                t("increase", lang): "#34D399",  # 青绿色 - 上调
+                t("hold", lang): "#1D4ED8",      # 深蓝色 - 保持
+                t("decrease", lang): "#FC8181",  # 玫瑰红 - 下调
+            }
+        
         action_fig = px.bar(
             action_counts,
             x="action_label",
             y="count",
             text="count",
+            color="action_label",
+            color_discrete_map=action_color_map,
             title=t("pricing_actions", lang),
             labels={
                 "action_label": t("column_action", lang),
                 "count": t("chart_count", lang),
             },
         )
+        
+        # 添加立体感：渐变效果和阴影
+        action_fig.update_traces(
+            marker=dict(
+                line=dict(
+                    width=2,
+                    color="rgba(255, 255, 255, 0.3)" if ui_theme == "dark" else "rgba(0, 0, 0, 0.1)"
+                ),
+                # 添加柱子顶部的高光效果
+                pattern=dict(shape=""),
+            ),
+            textfont=dict(size=14, color="#FFFFFF" if ui_theme == "dark" else "#0F172A"),
+        )
+        
         action_fig.update_layout(
             xaxis_title=t("column_action", lang),
             yaxis_title=t("chart_count", lang),
+            showlegend=False,
+            # 添加整体立体感
+            bargap=0.15,
+            bargroupgap=0.1,
         )
+        
         st.plotly_chart(
             apply_plotly_theme(action_fig, ui_theme),
             width="stretch",
@@ -1108,6 +1144,7 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
             pd.to_numeric(trend["room_revenue"], errors="coerce").fillna(0)
             / pd.to_numeric(trend["sellable_rooms"], errors="coerce").replace(0, pd.NA)
         ).fillna(0)
+        
         trend_fig = px.line(
             trend,
             x="stay_date",
@@ -1118,6 +1155,21 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
                 "revpar": t("revpar", lang),
             },
         )
+        
+        # 深色主题使用醒目的青色，亮色主题使用默认配色
+        if ui_theme == "dark":
+            trend_fig.update_traces(
+                line_color="#2DD4BF",
+                line_width=3,
+                # 添加阴影效果增强立体感
+                line_shape="spline",  # 平滑曲线
+            )
+        else:
+            trend_fig.update_traces(
+                line_width=2.5,
+                line_shape="spline",
+            )
+        
         trend_fig.update_layout(
             xaxis_title=t("column_stay_date", lang),
             yaxis_title=t("revpar", lang),

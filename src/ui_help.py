@@ -140,6 +140,22 @@ def render_interpretation_expander(lang: str) -> None:
 
 def recommendation_column_config(lang: str):
     return {
+        t("column_current_price", lang): st.column_config.NumberColumn(
+            t("column_current_price", lang),
+            format="%.0f",
+        ),
+        t("column_recommended_price", lang): st.column_config.NumberColumn(
+            t("column_recommended_price", lang),
+            format="%.0f",
+        ),
+        t("column_price_floor", lang): st.column_config.NumberColumn(
+            t("column_price_floor", lang),
+            format="%.0f",
+        ),
+        t("column_price_ceiling", lang): st.column_config.NumberColumn(
+            t("column_price_ceiling", lang),
+            format="%.0f",
+        ),
         t("column_action", lang): st.column_config.TextColumn(
             t("column_action", lang),
             help=h("action_help", lang),
@@ -164,6 +180,11 @@ def recommendation_column_config(lang: str):
             help=h("demand_forecast_help", lang),
             format="%.1f",
         ),
+        t("column_current_expected_sold_rooms", lang): st.column_config.NumberColumn(
+            t("column_current_expected_sold_rooms", lang),
+            help=h("expected_sold_rooms_help", lang),
+            format="%.1f",
+        ),
         t("column_expected_sold_rooms", lang): st.column_config.NumberColumn(
             t("column_expected_sold_rooms", lang),
             help=h("expected_sold_rooms_help", lang),
@@ -186,12 +207,12 @@ def recommendation_column_config(lang: str):
         ),
         t("column_occupancy", lang): st.column_config.NumberColumn(
             t("column_occupancy", lang),
-            format="%.2%%",
+            format="%.2f%%",
         ),
         t("column_remaining_inventory_ratio", lang): st.column_config.NumberColumn(
             t("column_remaining_inventory_ratio", lang),
             help=h("remaining_inventory_ratio_help", lang),
-            format="%.2%%",
+            format="%.2f%%",
         ),
         t("column_pickup_14d", lang): st.column_config.NumberColumn(
             t("column_pickup_14d", lang),

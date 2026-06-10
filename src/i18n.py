@@ -155,4 +155,7 @@ def localized_recommendations(df, lang: str = "zh"):
         localized["main_reasons"] = localized["main_reasons"].map(lambda value: translate_reason_list(value, lang))
     if "risk_flags" in localized.columns:
         localized["risk_flags"] = localized["risk_flags"].map(lambda value: translate_risk_list(value, lang))
+    for col in ("occupancy", "remaining_inventory_ratio"):
+        if col in localized.columns:
+            localized[col] = localized[col].mul(100).round(2)
     return localized.rename(columns={column: t(key, lang) for column, key in COLUMN_KEYS.items() if column in localized.columns})
