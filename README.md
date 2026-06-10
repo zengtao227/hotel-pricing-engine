@@ -1,8 +1,10 @@
 # hotel-pricing-engine
 
-酒店动态定价与收益优化项目。
+低实施门槛的酒店收益管理与调价决策助手。
 
-本项目目标不是简单预测“房价应该是多少”，而是建立一个可以根据历史订房、价格、库存和市场信号，推荐酒店房间价格的定价引擎。推荐结果应服务于收益最大化，同时兼顾入住率、取消风险、渠道差异和人工可解释性。
+本项目目标不是简单预测“房价应该是多少”，而是建立一个可以根据历史订房、价格、库存和市场信号，推荐酒店房间价格的定价引擎。推荐结果应服务于收益最大化，同时兼顾入住率、取消风险、渠道差异、人工可解释性和人工审批安全。
+
+本项目不把中小酒店或民宿理解为“业务简单”的场景。酒店规模变小，并不意味着收益管理问题消失；房型、库存、渠道、折扣、佣金、取消、提前预订和价格红线仍然存在。真正不同的是数据样本、预算、系统接入能力和执行资源。因此，本项目强调低实施门槛、可解释建议、人工审批和可复盘流程，而不是把 RMS 简化成一个玩具版。
 
 ## 当前状态
 
@@ -104,6 +106,8 @@ python scripts/create_demo_data.py --source data/raw/hotel_bookings.csv --output
 - [docs/revenue-optimization-model.md](docs/revenue-optimization-model.md): 收益最大化定价模型、剩余库存定价、渠道价和数学基础
 - [docs/ota-channel-pricing-notes.md](docs/ota-channel-pricing-notes.md): OTA 折扣、佣金、渠道价和价格更新频率说明
 - [docs/channel-pricing-rules.md](docs/channel-pricing-rules.md): Channel Pricing Rules 字段、公式、示例和 UI 设计
+- [docs/pricing-channel-principle.md](docs/pricing-channel-principle.md): 内部基准价、渠道展示价和净收益审批原则
+- [docs/product-positioning.md](docs/product-positioning.md): 产品定位、适用客户和实施原则
 - [docs/automated-pricing-monitoring.md](docs/automated-pricing-monitoring.md): 自动价格监控、自动计算和自动发布护栏设计
 - [docs/requirements.md](docs/requirements.md): 产品需求与 MVP 验收标准
 - [docs/data-requirements.md](docs/data-requirements.md): 数据字段、口径和质量要求
@@ -119,5 +123,5 @@ python scripts/create_demo_data.py --source data/raw/hotel_bookings.csv --output
 
 优先验证两个方向：
 
-1. **一次性部署 / 咨询版**：为中小酒店或民宿部署轻量收益管理助手。
+1. **一次性部署 / 咨询版**：为中小酒店或民宿部署低实施门槛、可解释、可审批的收益管理与调价决策助手。
 2. **教学 / 实训工具版**：用于酒店管理与数字化运营课程，学生上传或使用模拟数据完成收益管理实训。
