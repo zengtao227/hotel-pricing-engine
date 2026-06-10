@@ -73,7 +73,7 @@ streamlit run app/streamlit_app.py
 - `Room Revenue`: 房费收入
 - `Occupancy`: 入住率
 - `ADR`: 平均每日房价
-- `RevPAR`: 每间可售房收入
+- `RevPAR`: Revenue Per Available Room，每间可售房平均收入
 - `Cancellation Rate`: 取消率
 - `Pickup`: 某一时间窗口内新增预订量
 
@@ -111,7 +111,7 @@ python scripts/create_demo_data.py --source data/raw/hotel_bookings.csv --output
 - [docs/roadmap.md](docs/roadmap.md): 阶段计划
 - [docs/open-questions.md](docs/open-questions.md): 待确认问题
 - [docs/deployment.md](docs/deployment.md): VPS 部署说明
-- [docs/i18n-dashboard.md](docs/i18n-dashboard.md): 多语言界面和销售演示看板说明
+- [docs/i18n-dashboard.md](docs/i18n-dashboard.md): 多语言界面和销售看板说明
 - [docs/price-approval-and-publishing.md](docs/price-approval-and-publishing.md): 价格审批与发布使用手册
 - [docs/marketing-and-product-roadmap.md](docs/marketing-and-product-roadmap.md): 商业化、客户定位和产品路线思考
 

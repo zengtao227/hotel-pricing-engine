@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from .i18n import t, translate_room_type
+from .ui_theme import status_row_background
 
 
 A = {
@@ -162,15 +163,16 @@ def disabled_columns(lang: str) -> list[str]:
 
 def styled_preview(df: pd.DataFrame, lang: str):
     display = to_editor_display(df, lang)
+    theme = st.session_state.get("app_theme", "light")
 
     def style_row(row):
         internal = df.loc[row.name]
         if internal["push_status"] == "pushed":
-            return ["background-color: #d1e7dd"] * len(row)
+            return [f"background-color: {status_row_background('success', theme)}"] * len(row)
         if internal["approval_status"] == "rejected":
-            return ["background-color: #f8d7da"] * len(row)
+            return [f"background-color: {status_row_background('danger', theme)}"] * len(row)
         if bool(internal["manual_override"]):
-            return ["background-color: #fff3cd"] * len(row)
+            return [f"background-color: {status_row_background('warning', theme)}"] * len(row)
         return [""] * len(row)
 
     return display.style.apply(style_row, axis=1)
@@ -194,11 +196,11 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str) -> None:
 
     col_bulk, col_reset = st.columns(2)
     with col_bulk:
-        if st.button(alabel("bulk_accept", lang), key="card_bulk_accept", use_container_width=True):
+        if st.button(alabel("bulk_accept", lang), key="card_bulk_accept", width="stretch"):
             st.session_state.approval_table = accept_price_changes(st.session_state.approval_table)
             st.rerun()
     with col_reset:
-        if st.button(alabel("reset", lang), key="card_reset", use_container_width=True):
+        if st.button(alabel("reset", lang), key="card_reset", width="stretch"):
             st.session_state.approval_table = build_approval_table(recommendations)
             st.rerun()
 
@@ -259,7 +261,7 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str) -> None:
                 if st.button(
                     _card_label("approve_btn", lang),
                     key=f"card_approve_{idx}",
-                    use_container_width=True,
+                    width="stretch",
                     type="primary" if str(row["approval_status"]) == "pending" else "secondary",
                     disabled=is_pushed,
                 ):
@@ -274,7 +276,7 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str) -> None:
                 if st.button(
                     _card_label("reject_btn", lang),
                     key=f"card_reject_{idx}",
-                    use_container_width=True,
+                    width="stretch",
                     disabled=is_pushed,
                 ):
                     tbl = st.session_state.approval_table.copy()

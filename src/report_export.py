@@ -32,7 +32,7 @@ METRIC_COLUMN_LABELS = {
     "booking_count": {"zh": "订单数", "en": "Booking Count", "de": "Buchungsanzahl", "fr": "Nombre de réservations"},
     "occupancy": {"zh": "入住率", "en": "Occupancy", "de": "Auslastung", "fr": "Taux d’occupation"},
     "adr": {"zh": "平均房价", "en": "ADR", "de": "ADR", "fr": "ADR"},
-    "revpar": {"zh": "每间可售房收入", "en": "RevPAR", "de": "RevPAR", "fr": "RevPAR"},
+    "revpar": {"zh": "RevPAR（每间可售房平均收入）", "en": "RevPAR", "de": "RevPAR", "fr": "RevPAR"},
     "day_of_week": {"zh": "星期", "en": "Day of Week", "de": "Wochentag", "fr": "Jour de semaine"},
     "is_weekend": {"zh": "是否周末", "en": "Is Weekend", "de": "Wochenende", "fr": "Week-end"},
 }

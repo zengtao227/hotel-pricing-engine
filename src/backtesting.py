@@ -10,10 +10,11 @@ from .i18n import t, translate_reason_list, translate_risk_list, translate_room_
 from .metrics import calculate_daily_metrics
 from .pricing_engine import generate_recommendations
 from .revenue_simulation import simulate_candidate_revenue_curve
+from .ui_theme import apply_plotly_theme
 
 
 BT = {
-    "tab": {"zh": "回测分析", "en": "Backtesting", "de": "Backtesting", "fr": "Backtesting"},
+    "tab": {"zh": "回测分析", "en": "Backtest Analysis", "de": "Backtest-Analyse", "fr": "Analyse de backtest"},
     "intro": {
         "zh": "用历史观察日以前已知的订单数据，模拟系统当时会给出的推荐价；同时展示价格弹性模型的预期收益回测和最终实际销量的静态对照。",
         "en": "Simulate recommendations using only bookings known before the historical observation date, then show elasticity-aware expected revenue and a static realized-volume comparison.",
@@ -22,7 +23,7 @@ BT = {
     },
     "observation_date": {"zh": "回测观察日", "en": "Backtest observation date", "de": "Backtest-Beobachtungstag", "fr": "Date d’observation"},
     "run_hint": {"zh": "系统只使用该日以前已经产生的订单作为已知信息，并对后续周期生成推荐。", "en": "The system uses only bookings already made by that date and generates recommendations for the following horizon.", "de": "Das System nutzt nur bis dahin bekannte Buchungen und erstellt Empfehlungen für den folgenden Zeitraum.", "fr": "Le système utilise uniquement les réservations déjà connues à cette date et génère des recommandations pour l’horizon suivant."},
-    "static_volume_note": {"zh": "说明：弹性收益回测是模型在观察日当时的预期结果，不等同于真实因果收益；静态销量对照保留为保守 sanity check。", "en": "Note: elasticity revenue backtesting is the model's as-of expected result, not proven causal revenue. The static-volume comparison remains as a conservative sanity check.", "de": "Hinweis: Der preiselastische Umsatz-Backtest ist die damalige Erwartung des Modells, kein bewiesener kausaler Umsatz. Der statische Volumenvergleich bleibt als konservativer Plausibilitätscheck erhalten.", "fr": "Note : le backtest de revenu avec élasticité est le résultat attendu par le modèle à la date d’observation, pas un revenu causal prouvé. La comparaison à volume statique reste un contrôle prudent."},
+    "static_volume_note": {"zh": "说明：弹性收益回测是模型在观察日当时的预期结果，不等同于真实因果收益；静态销量对照保留为保守的合理性校验。", "en": "Note: elasticity revenue backtesting is the model's as-of expected result, not proven causal revenue. The static-volume comparison remains as a conservative sanity check.", "de": "Hinweis: Der preiselastische Umsatz-Backtest ist die damalige Erwartung des Modells, kein bewiesener kausaler Umsatz. Der statische Volumenvergleich bleibt als konservativer Plausibilitätscheck erhalten.", "fr": "Note : le backtest de revenu avec élasticité est le résultat attendu par le modèle à la date d’observation, pas un revenu causal prouvé. La comparaison à volume statique reste un contrôle prudent."},
     "elasticity_section": {"zh": "价格弹性收益回测", "en": "Elasticity Revenue Backtest", "de": "Umsatz-Backtest mit Preiselastizität", "fr": "Backtest de revenu avec élasticité"},
     "static_section": {"zh": "静态实际销量对照", "en": "Static Realized-Volume Comparison", "de": "Statischer Ist-Volumen-Vergleich", "fr": "Comparaison statique au volume réalisé"},
     "elasticity_current_revenue": {"zh": "当前价预期收益", "en": "Current Expected Revenue", "de": "Erwarteter Umsatz aktueller Preis", "fr": "Revenu attendu prix actuel"},
@@ -40,6 +41,17 @@ BT = {
     "curve_selector": {"zh": "选择曲线样本", "en": "Select curve sample", "de": "Kurvenbeispiel auswählen", "fr": "Choisir un exemple de courbe"},
     "curve_no_data": {"zh": "当前样本无法生成候选价收益曲线。", "en": "The selected sample cannot generate a candidate-price revenue curve.", "de": "Für dieses Beispiel kann keine Kandidatenpreis-Umsatzkurve erzeugt werden.", "fr": "L’exemple sélectionné ne peut pas générer de courbe de revenu."},
     "no_data": {"zh": "当前数据不足以生成回测结果。", "en": "Not enough data to generate backtest results.", "de": "Nicht genügend Daten für Backtest-Ergebnisse.", "fr": "Données insuffisantes pour générer le backtest."},
+    "axis_stay_date": {"zh": "入住日期", "en": "Stay Date", "de": "Aufenthaltsdatum", "fr": "Date de séjour"},
+    "axis_revenue_delta": {"zh": "收益变化金额", "en": "Revenue Delta", "de": "Umsatzänderung", "fr": "Variation de revenu"},
+    "legend_revenue_metric": {"zh": "收益口径", "en": "Revenue Metric", "de": "Umsatzkennzahl", "fr": "Indicateur de revenu"},
+    "axis_candidate_price": {"zh": "候选价格", "en": "Candidate Price", "de": "Kandidatenpreis", "fr": "Prix candidat"},
+    "axis_expected_revenue": {"zh": "预期收益", "en": "Expected Revenue", "de": "Erwarteter Umsatz", "fr": "Revenu attendu"},
+    "expected_sold_rooms": {"zh": "预计售出房间", "en": "Expected Sold Rooms", "de": "Erwartete verkaufte Zimmer", "fr": "Chambres vendues attendues"},
+    "expected_new_sold_rooms": {"zh": "预计新增售出", "en": "Expected New Sold Rooms", "de": "Erwartete neue Verkäufe", "fr": "Nouvelles ventes attendues"},
+    "current_price_marker": {"zh": "是否当前价", "en": "Is Current Price", "de": "Ist aktueller Preis", "fr": "Prix actuel ?"},
+    "recommended_price_marker": {"zh": "是否推荐价", "en": "Is Recommended Price", "de": "Ist empfohlener Preis", "fr": "Prix recommandé ?"},
+    "yes": {"zh": "是", "en": "Yes", "de": "Ja", "fr": "Oui"},
+    "no": {"zh": "否", "en": "No", "de": "Nein", "fr": "Non"},
 }
 
 COLUMN_LABELS = {
@@ -114,8 +126,9 @@ def _safe_sum(detail: pd.DataFrame, column: str) -> float:
     return float(pd.to_numeric(detail[column], errors="coerce").fillna(0).sum())
 
 
-def _curve_label(row) -> str:
-    return f"{row.stay_date} | {row.room_type} | {row.current_price:.0f} -> {row.recommended_price:.0f}"
+def _curve_label(row, lang: str) -> str:
+    room = translate_room_type(str(row.room_type), lang)
+    return f"{row.stay_date} | {room} | {row.current_price:.0f} → {row.recommended_price:.0f}"
 
 
 def _candidate_curve_from_row(row, max_change_pct: float, price_rounding_strategy: str) -> pd.DataFrame:
@@ -203,9 +216,23 @@ def run_static_backtest(metrics, bookings, current_prices, observation_date, hor
     }
 
 
+_ROUND_2DP = [
+    "known_room_revenue", "current_expected_revenue", "recommended_expected_revenue",
+    "demand_forecast_at_current_price", "current_expected_sold_rooms", "expected_sold_rooms",
+    "expected_new_sold_rooms", "baseline_revenue", "recommended_revenue", "static_revenue_delta",
+]
+_ROUND_4DP = ["known_occupancy", "realized_occupancy"]
+
+
 def localized_backtest_detail(detail: pd.DataFrame, lang: str) -> pd.DataFrame:
     columns = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price", "action", "confidence", "known_sellable_rooms", "known_sold_rooms", "known_room_revenue", "known_occupancy", "current_expected_revenue", "recommended_expected_revenue", "demand_forecast_at_current_price", "current_expected_sold_rooms", "expected_sold_rooms", "expected_new_sold_rooms", "demand_elasticity", "realized_sold_rooms", "realized_occupancy", "baseline_revenue", "recommended_revenue", "static_revenue_delta", "main_reasons", "risk_flags"]
     out = detail[[c for c in columns if c in detail.columns]].copy()
+    for col in _ROUND_2DP:
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce").round(2)
+    for col in _ROUND_4DP:
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce").round(4)
     if "room_type" in out.columns:
         out["room_type"] = out["room_type"].map(lambda v: translate_room_type(v, lang))
     if "action" in out.columns:
@@ -231,7 +258,7 @@ def backtest_excel_bytes(detail: pd.DataFrame, lang: str) -> bytes:
     return output.getvalue()
 
 
-def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_days, max_change_pct, price_rounding_strategy, room_price_bounds=None) -> None:
+def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_days, max_change_pct, price_rounding_strategy, room_price_bounds=None, ui_theme: str = "light") -> None:
     st.subheader(bt_label("tab", lang))
     st.write(bt_label("intro", lang))
     st.info(bt_label("static_volume_note", lang))
@@ -271,18 +298,70 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
             "static_revenue_delta": bt_label("revenue_delta", lang),
         }
     )
-    st.plotly_chart(px.bar(daily_long, x="stay_date", y="revenue_delta", color="metric", barmode="group", title=bt_label("chart", lang)))
+    daily_fig = px.bar(
+        daily_long,
+        x="stay_date",
+        y="revenue_delta",
+        color="metric",
+        barmode="group",
+        title=bt_label("chart", lang),
+        labels={
+            "stay_date": bt_label("axis_stay_date", lang),
+            "revenue_delta": bt_label("axis_revenue_delta", lang),
+            "metric": bt_label("legend_revenue_metric", lang),
+        },
+    )
+    daily_fig.update_layout(
+        xaxis_title=bt_label("axis_stay_date", lang),
+        yaxis_title=bt_label("axis_revenue_delta", lang),
+        legend_title_text=bt_label("legend_revenue_metric", lang),
+    )
+    st.plotly_chart(apply_plotly_theme(daily_fig, ui_theme), width="stretch")
 
     st.subheader(bt_label("curve", lang))
     curve_options = detail.copy()
-    curve_options["_curve_label"] = curve_options.apply(_curve_label, axis=1)
+    curve_options["_curve_label"] = curve_options.apply(lambda row: _curve_label(row, lang), axis=1)
     selected_curve_label = st.selectbox(bt_label("curve_selector", lang), curve_options["_curve_label"].tolist())
     selected_curve_row = curve_options[curve_options["_curve_label"] == selected_curve_label].iloc[0]
     curve = _candidate_curve_from_row(selected_curve_row, max_change_pct, price_rounding_strategy)
     if curve.empty:
         st.info(bt_label("curve_no_data", lang))
     else:
-        st.plotly_chart(px.line(curve, x="candidate_price", y="expected_revenue", markers=True, title=bt_label("curve", lang), hover_data=["expected_sold_rooms", "expected_new_sold_rooms", "is_current_price", "is_recommended_price"]))
+        curve_display = curve.copy()
+        curve_display["current_price_marker"] = curve_display["is_current_price"].map(
+            lambda value: bt_label("yes", lang) if bool(value) else bt_label("no", lang)
+        )
+        curve_display["recommended_price_marker"] = curve_display["is_recommended_price"].map(
+            lambda value: bt_label("yes", lang) if bool(value) else bt_label("no", lang)
+        )
+        curve_fig = px.line(
+            curve_display,
+            x="candidate_price",
+            y="expected_revenue",
+            markers=True,
+            title=f"{bt_label('curve', lang)}：{selected_curve_label}",
+            hover_data={
+                "expected_sold_rooms": ":.2f",
+                "expected_new_sold_rooms": ":.2f",
+                "current_price_marker": True,
+                "recommended_price_marker": True,
+                "is_current_price": False,
+                "is_recommended_price": False,
+            },
+            labels={
+                "candidate_price": bt_label("axis_candidate_price", lang),
+                "expected_revenue": bt_label("axis_expected_revenue", lang),
+                "expected_sold_rooms": bt_label("expected_sold_rooms", lang),
+                "expected_new_sold_rooms": bt_label("expected_new_sold_rooms", lang),
+                "current_price_marker": bt_label("current_price_marker", lang),
+                "recommended_price_marker": bt_label("recommended_price_marker", lang),
+            },
+        )
+        curve_fig.update_layout(
+            xaxis_title=bt_label("axis_candidate_price", lang),
+            yaxis_title=bt_label("axis_expected_revenue", lang),
+        )
+        st.plotly_chart(apply_plotly_theme(curve_fig, ui_theme), width="stretch")
 
     st.subheader(bt_label("static_section", lang))
     c1, c2, c3, c4 = st.columns(4)

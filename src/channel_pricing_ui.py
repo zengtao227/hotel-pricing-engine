@@ -10,6 +10,7 @@ from .channel_pricing_rules import (
     generate_channel_prices,
 )
 from .i18n import translate_room_type
+from .ui_theme import status_row_background
 
 
 CHANNEL_TEXT = {
@@ -79,15 +80,16 @@ def _display_table(channel_prices: pd.DataFrame, lang: str) -> pd.DataFrame:
 
 def _styled_preview(channel_prices: pd.DataFrame, lang: str):
     display = _display_table(channel_prices, lang)
+    theme = st.session_state.get("app_theme", "light")
 
     def style_row(row):
         internal = channel_prices.iloc[row.name]
         reason = str(internal.get("approval_reason", ""))
         if "net revenue below" in reason or "non-positive" in reason or "display price drop" in reason:
-            return ["background-color: #f8d7da"] * len(row)
+            return [f"background-color: {status_row_background('danger', theme)}"] * len(row)
         if bool(internal.get("management_approval_required", False)):
-            return ["background-color: #fff3cd"] * len(row)
-        return ["background-color: #d1e7dd"] * len(row)
+            return [f"background-color: {status_row_background('warning', theme)}"] * len(row)
+        return [f"background-color: {status_row_background('success', theme)}"] * len(row)
 
     return display.style.apply(style_row, axis=1)
 

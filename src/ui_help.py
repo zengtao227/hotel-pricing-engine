@@ -25,6 +25,7 @@ HELP_TEXT = {
     "interpretation_markdown": {
         "zh": """
 - **剩余库存比例** = 还没卖出的可售房间比例。接近 0 表示库存紧张；接近 1 表示库存充足。正常情况下应在 0 到 1 之间；如果出现负值，通常代表该日期/房型出现超售或库存数据与订单数据不一致，需要人工检查。
+- **RevPAR（Revenue Per Available Room，每间可售房平均收入）** = 房费收入 ÷ 可售房间数。它不是卖出去房间的平均房价；平均房价看 ADR。这个指标会同时反映价格和入住率，例如房价高但没卖出去，数值也不会好看。
 - **预计收益变化**：系统用候选价收益模拟计算推荐价相对当前价的预期收入差。模型会把已知订单收入固定下来，只估计剩余库存未来新增需求对价格的响应。
 - **价格弹性**：负值表示价格上升会压低需求。绝对值越大，说明客户越价格敏感；绝对值越小，说明需求更刚性。
 - **14天新增预订**：最近 14 天新增的预订量。数值越高，说明近期需求更活跃。
@@ -33,6 +34,7 @@ HELP_TEXT = {
 """,
         "en": """
 - **Remaining Inventory Ratio** = share of sellable rooms not yet sold. Close to 0 means tight inventory; close to 1 means plenty of inventory. It should normally be between 0 and 1. A negative value usually indicates overbooking or inconsistent inventory/order data and should be checked manually.
+- **RevPAR** = room revenue divided by sellable rooms. It is not the average price of sold rooms; that is ADR. RevPAR reflects both price and occupancy, so a high price with weak sales will still show weak RevPAR.
 - **Expected Revenue Delta**: expected revenue difference from the candidate-price simulation. Known booked revenue is fixed; only future demand for remaining inventory responds to price.
 - **Price Elasticity**: a negative value means higher price reduces demand. Larger absolute values mean more price-sensitive demand; smaller absolute values mean more inelastic demand.
 - **14-day Pickup**: new bookings received in the last 14 days. Higher values indicate stronger recent demand.
@@ -41,6 +43,7 @@ HELP_TEXT = {
 """,
         "de": """
 - **Restbestandsquote** = Anteil der verkaufbaren Zimmer, die noch nicht verkauft wurden. Nahe 0 bedeutet knapper Bestand; nahe 1 bedeutet viel Bestand. Normalerweise liegt der Wert zwischen 0 und 1. Ein negativer Wert weist meist auf Überbuchung oder inkonsistente Bestands-/Buchungsdaten hin und sollte manuell geprüft werden.
+- **RevPAR** = Zimmerumsatz geteilt durch verkaufbare Zimmer. Das ist nicht der Durchschnittspreis der verkauften Zimmer; dafür steht ADR. RevPAR kombiniert Preis und Auslastung.
 - **Erwartete Umsatzänderung**: Umsatzdifferenz aus der Kandidatenpreis-Simulation. Bereits gebuchter Umsatz bleibt fix; nur zukünftige Nachfrage für Restbestand reagiert auf den Preis.
 - **Preiselastizität**: Ein negativer Wert bedeutet, dass ein höherer Preis die Nachfrage senkt. Größere Beträge bedeuten preissensiblere Nachfrage.
 - **14-Tage-Pickup**: neue Buchungen der letzten 14 Tage. Höhere Werte zeigen stärkere aktuelle Nachfrage.
@@ -49,6 +52,7 @@ HELP_TEXT = {
 """,
         "fr": """
 - **Ratio de stock restant** = part des chambres vendables encore non vendues. Proche de 0 signifie stock limité ; proche de 1 signifie stock abondant. Normalement, la valeur est entre 0 et 1. Une valeur négative indique souvent une surréservation ou une incohérence entre stock et réservations, à vérifier manuellement.
+- **RevPAR** = revenu chambres divisé par chambres vendables. Ce n’est pas le prix moyen des chambres vendues ; cela correspond à l’ADR. Le RevPAR combine prix et occupation.
 - **Variation de revenu estimée** : différence de revenu issue de la simulation des prix candidats. Le revenu déjà réservé reste fixe ; seule la demande future du stock restant réagit au prix.
 - **Élasticité-prix** : une valeur négative signifie qu’un prix plus élevé réduit la demande. Plus la valeur absolue est grande, plus la demande est sensible au prix.
 - **Pickup 14 jours** : nouvelles réservations reçues sur les 14 derniers jours. Plus la valeur est élevée, plus la demande récente est forte.
@@ -180,10 +184,14 @@ def recommendation_column_config(lang: str):
             help=h("candidate_price_count_help", lang),
             format="%.0f",
         ),
+        t("column_occupancy", lang): st.column_config.NumberColumn(
+            t("column_occupancy", lang),
+            format="%.2%%",
+        ),
         t("column_remaining_inventory_ratio", lang): st.column_config.NumberColumn(
             t("column_remaining_inventory_ratio", lang),
             help=h("remaining_inventory_ratio_help", lang),
-            format="%.1%%",
+            format="%.2%%",
         ),
         t("column_pickup_14d", lang): st.column_config.NumberColumn(
             t("column_pickup_14d", lang),
