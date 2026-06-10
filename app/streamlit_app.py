@@ -1282,7 +1282,18 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     if st.session_state.approval_log.empty:
         st.info(alabel("audit_empty", lang))
     else:
-        st.dataframe(st.session_state.approval_log, width="stretch", hide_index=True)
+        # 配置审批日志的列格式
+        audit_log_column_config = {
+            "current_price": st.column_config.NumberColumn("当前价" if lang == "zh" else "Current Price", format="%.0f"),
+            "recommended_price": st.column_config.NumberColumn("系统推荐价" if lang == "zh" else "Recommended Price", format="%.0f"),
+            "approved_price": st.column_config.NumberColumn("最终批准价" if lang == "zh" else "Approved Price", format="%.0f"),
+        }
+        st.dataframe(
+            st.session_state.approval_log, 
+            width="stretch", 
+            hide_index=True,
+            column_config=audit_log_column_config
+        )
         st.download_button(
             alabel("download_audit", lang),
             data=audit_log_bytes(st.session_state.approval_log),

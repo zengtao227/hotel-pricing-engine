@@ -153,7 +153,20 @@ def from_editor_display(display: pd.DataFrame, lang: str) -> pd.DataFrame:
 
 def editor_column_config(lang: str):
     status_labels = [_value_label(STATUS, key, lang) for key in ["pending", "approved", "rejected"]]
-    return {clabel("selected", lang): st.column_config.CheckboxColumn(clabel("selected", lang)), clabel("approved_price", lang): st.column_config.NumberColumn(clabel("approved_price", lang), min_value=0, step=1, format="%.0f"), clabel("approval_status", lang): st.column_config.SelectboxColumn(clabel("approval_status", lang), options=status_labels), clabel("review_comment", lang): st.column_config.TextColumn(clabel("review_comment", lang))}
+    return {
+        clabel("selected", lang): st.column_config.CheckboxColumn(clabel("selected", lang)),
+        clabel("approved_price", lang): st.column_config.NumberColumn(
+            clabel("approved_price", lang),
+            min_value=0,
+            step=0.01,
+            format="%.2f"
+        ),
+        clabel("approval_status", lang): st.column_config.SelectboxColumn(
+            clabel("approval_status", lang),
+            options=status_labels
+        ),
+        clabel("review_comment", lang): st.column_config.TextColumn(clabel("review_comment", lang))
+    }
 
 
 def disabled_columns(lang: str) -> list[str]:
@@ -175,7 +188,12 @@ def styled_preview(df: pd.DataFrame, lang: str):
             return [f"background-color: {status_row_background('warning', theme)}"] * len(row)
         return [""] * len(row)
 
-    return display.style.apply(style_row, axis=1)
+    price_format: dict[str, str] = {}
+    for col_key in ["current_price", "recommended_price", "approved_price"]:
+        col_label = clabel(col_key, lang)
+        if col_label in display.columns:
+            price_format[col_label] = "{:.2f}"
+    return display.style.apply(style_row, axis=1).format(price_format)
 
 
 def simulate_push(df: pd.DataFrame, lang: str, actor: str = "demo_user") -> tuple[pd.DataFrame, pd.DataFrame]:

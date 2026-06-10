@@ -26,7 +26,7 @@ HELP_TEXT = {
         "zh": """
 - **剩余库存比例** = 还没卖出的可售房间比例。接近 0 表示库存紧张；接近 1 表示库存充足。正常情况下应在 0 到 1 之间；如果出现负值，通常代表该日期/房型出现超售或库存数据与订单数据不一致，需要人工检查。
 - **RevPAR（Revenue Per Available Room，每间可售房平均收入）** = 房费收入 ÷ 可售房间数。它不是卖出去房间的平均房价；平均房价看 ADR。这个指标会同时反映价格和入住率，例如房价高但没卖出去，数值也不会好看。
-- **预计收益变化**：系统用候选价收益模拟计算推荐价相对当前价的预期收入差。模型会把已知订单收入固定下来，只估计剩余库存未来新增需求对价格的响应。
+- **预计收益变化**：系统用候选价收益模拟计算推荐价相对当前价的预期收入差。因为“预期收益 = 已售收入 + 价格 × 未来预测销量（期望值，通常包含小数）”，即使房价均为整数，由于预测销量是包含小数的期望间夜数，计算出的预期收益及收益变化也保留两位小数。
 - **价格弹性**：负值表示价格上升会压低需求。绝对值越大，说明客户越价格敏感；绝对值越小，说明需求更刚性。
 - **14天新增预订**：最近 14 天新增的预订量。数值越高，说明近期需求更活跃。
 - **置信度**：系统对该建议的把握程度。高置信度可以优先处理；低置信度建议仅作为观察信号。
@@ -57,7 +57,7 @@ HELP_TEXT = {
 - **Élasticité-prix** : une valeur négative signifie qu’un prix plus élevé réduit la demande. Plus la valeur absolue est grande, plus la demande est sensible au prix.
 - **Pickup 14 jours** : nouvelles réservations reçues sur les 14 derniers jours. Plus la valeur est élevée, plus la demande récente est forte.
 - **Confiance** : force du signal de recommandation. Les recommandations à forte confiance doivent être traitées en priorité ; les faibles confiances sont surtout des signaux d’observation.
-- **Alertes de risque** : raisons de validation humaine, comme date très proche, anomalie de stock ou référence historique limitée.
+- **Alertes de risque** : raisons de validation humaine, comme date très proche, anomalie de stock ou historique limité.
 """,
     },
     "action_help": {
@@ -67,13 +67,13 @@ HELP_TEXT = {
         "fr": "Action recommandée : augmenter, baisser ou maintenir. Ce n’est pas une modification automatique, mais une suggestion à valider.",
     },
     "expected_revenue_delta_help": {
-        "zh": "候选价收益模拟中的推荐价预期收益减去当前价预期收益。已知订单收入固定，只对剩余库存未来需求建模。",
+        "zh": "推荐价的预期收益减去当前价的预期收益。\n\n【为什么包含小数？】\n预期收益 = 已售收入 + 价格 × 未来预测销量（包含小数的期望值，例如 12.34 间）。即使价格是整数，由于预测销量是概率期望值，因此计算出的预期收益及收益变化也包含两位小数。",
         "en": "Recommended expected revenue minus current expected revenue in the candidate-price simulation. Known booked revenue is fixed; only future demand for remaining inventory is modeled.",
         "de": "Erwarteter Umsatz des empfohlenen Preises minus erwarteter Umsatz des aktuellen Preises in der Kandidatenpreis-Simulation. Bereits gebuchter Umsatz bleibt fix.",
         "fr": "Revenu attendu du prix recommandé moins revenu attendu du prix actuel dans la simulation des prix candidats. Le revenu déjà réservé reste fixe.",
     },
     "expected_revenue_help": {
-        "zh": "模型估计在该价格下最终可获得的房费收入，包含已知订单收入和未来预计新增成交收入。",
+        "zh": "模型估计在该价格下最终可获得的房费总收入。\n\n【计算公式与小数说明】\n预期收益 = 已售收入 + 价格 × 未来预计销量（期望值，通常为小数，例如 12.34 间）。即使价格是整数，由于预测销量是包含小数的概率期望值，因此最终算出的金额也包含两位小数。",
         "en": "Estimated final room revenue at this price, including known booked revenue and expected future new-booking revenue.",
         "de": "Geschätzter endgültiger Zimmerumsatz bei diesem Preis, inklusive bereits gebuchtem Umsatz und erwarteten neuen Buchungen.",
         "fr": "Revenu chambres final estimé à ce prix, incluant le revenu déjà réservé et les nouvelles réservations attendues.",
