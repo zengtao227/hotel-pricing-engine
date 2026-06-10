@@ -842,17 +842,15 @@ PRICE_ROUNDING_HELP = {
 
 def _language_selector() -> str:
     if "language" not in st.session_state:
-        st.session_state.language = "zh"
-
-    selected_label = st.selectbox(
+        st.session_state["language"] = "zh"
+    st.selectbox(
         "🌐 Language / 语言",
         options=list(LANGUAGES.keys()),
         format_func=lambda code: LANGUAGES[code],
-        index=list(LANGUAGES.keys()).index(st.session_state.language),
+        key="language",
         label_visibility="collapsed",
     )
-    st.session_state.language = selected_label
-    return selected_label
+    return st.session_state["language"]
 
 
 def _theme_selector(lang: str) -> str:

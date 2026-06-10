@@ -1,4 +1,4 @@
-LANGUAGES = {"zh": "中文", "en": "English", "de": "Deutsch", "fr": "Français"}
+LANGUAGES = {"zh": "🇨🇳 中文", "en": "🇬🇧 English", "de": "🇩🇪 Deutsch", "fr": "🇫🇷 Français"}
 
 TRANSLATIONS = {
     "app_title": {"zh": "酒店收益管理与智能调价助手", "en": "Hotel Revenue & Pricing Assistant", "de": "Hotel Revenue- und Preisassistent", "fr": "Assistant de revenu et de tarification hôtelière"},
