@@ -947,7 +947,7 @@ def _show_recommendation_table(df: pd.DataFrame, lang: str, ui_theme: str) -> No
     localized = localized_recommendations(df, lang)
     st.dataframe(
         _styled_recommendations(df, localized, ui_theme),
-        width="stretch",
+        use_container_width=True,
         hide_index=True,
         column_config=recommendation_column_config(lang),
     )
@@ -1132,7 +1132,7 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         
         st.plotly_chart(
             apply_plotly_theme(action_fig, ui_theme),
-            width="stretch",
+            use_container_width=True,
         )
 
     with right:
@@ -1177,7 +1177,7 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         )
         st.plotly_chart(
             apply_plotly_theme(trend_fig, ui_theme),
-            width="stretch",
+            use_container_width=True,
         )
 
     st.subheader(t("top_opportunities", lang))
@@ -1243,17 +1243,17 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     else:
         c1, c2 = st.columns([0.35, 0.65])
         with c1:
-            if st.button(alabel("bulk_accept", lang), width="stretch"):
+            if st.button(alabel("bulk_accept", lang), use_container_width=True):
                 st.session_state.approval_table = accept_price_changes(st.session_state.approval_table)
         with c2:
-            if st.button(alabel("reset", lang), width="stretch"):
+            if st.button(alabel("reset", lang), use_container_width=True):
                 st.session_state.approval_table = build_approval_table(recommendations)
 
         st.caption(alabel("editor_caption", lang))
         editor_display = to_editor_display(st.session_state.approval_table, lang)
         edited_display = st.data_editor(
             editor_display,
-            width="stretch",
+            use_container_width=True,
             hide_index=True,
             column_config=editor_column_config(lang),
             disabled=disabled_columns(lang),
@@ -1268,10 +1268,10 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
 
     # Common to both views: full preview, channel prices, push button, audit log
     st.caption(alabel("preview_caption", lang))
-    st.dataframe(styled_preview(st.session_state.approval_table, lang), width="stretch", hide_index=True)
+    st.dataframe(styled_preview(st.session_state.approval_table, lang), use_container_width=True, hide_index=True)
     render_channel_price_preview(st.session_state.approval_table, lang)
 
-    if st.button(alabel("simulate_push", lang), type="primary", width="stretch"):
+    if st.button(alabel("simulate_push", lang), type="primary", use_container_width=True):
         pushed_table, log_rows = simulate_push(st.session_state.approval_table, lang)
         st.session_state.approval_table = pushed_table
         if log_rows.empty:
@@ -1291,7 +1291,7 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
         }
         st.dataframe(
             st.session_state.approval_log, 
-            width="stretch", 
+            use_container_width=True, 
             hide_index=True,
             column_config=audit_log_column_config
         )
@@ -1306,11 +1306,11 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
 def render_data_preview(hotel_data, lang: str) -> None:
     st.subheader(t("data_preview", lang))
     with st.expander(t("bookings", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.bookings.head(50), lang), width="stretch")
+        st.dataframe(localize_room_type_values(hotel_data.bookings.head(50), lang), use_container_width=True)
     with st.expander(t("inventory", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.inventory.head(50), lang), width="stretch")
+        st.dataframe(localize_room_type_values(hotel_data.inventory.head(50), lang), use_container_width=True)
     with st.expander(t("current_prices", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.current_prices.head(50), lang), width="stretch")
+        st.dataframe(localize_room_type_values(hotel_data.current_prices.head(50), lang), use_container_width=True)
 
 
 header_left, header_right = st.columns([0.78, 0.22])
