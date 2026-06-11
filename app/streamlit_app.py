@@ -17,12 +17,15 @@ from src.approval_workflow import (
     approval_signature,
     audit_log_bytes,
     build_approval_table,
+    decision_log_rows,
     disabled_columns,
     editor_column_config,
     from_editor_display,
     render_approval_cards,
+    reset_log_row,
     simulate_push,
     styled_preview,
+    table_decision_events,
     to_editor_display,
     update_manual_flags,
     _card_label,
@@ -966,11 +969,17 @@ def _styled_recommendations(df: pd.DataFrame, localized: pd.DataFrame, ui_theme:
 def _show_recommendation_table(df: pd.DataFrame, lang: str, ui_theme: str) -> None:
     st.caption(t("table_legend", lang), unsafe_allow_html=True)
     localized = localized_recommendations(df, lang)
+    risk_series = df["risk_flags"].fillna("").astype(str).str.strip().ne("").map({True: "⚠️", False: ""})
+    risk_series.index = localized.index
+    localized.insert(0, "⚠", risk_series)
     st.dataframe(
         _styled_recommendations(df, localized, ui_theme),
         use_container_width=True,
         hide_index=True,
-        column_config=recommendation_column_config(lang),
+        column_config={
+            "⚠": st.column_config.TextColumn("⚠", width="small"),
+            **recommendation_column_config(lang),
+        },
     )
 
 
@@ -1276,6 +1285,17 @@ def render_recommendations(recommendations: pd.DataFrame, lang: str, ui_theme: s
     _show_recommendation_table(filtered, lang, ui_theme)
 
 
+def _default_actor() -> str:
+    # Caddy basic_auth forwards the authenticated user via X-Remote-User.
+    try:
+        header_user = st.context.headers.get("X-Remote-User")
+        if header_user:
+            return str(header_user)
+    except Exception:
+        pass
+    return "demo_user"
+
+
 def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -> None:
     st.subheader(alabel("tab", lang))
     st.write(alabel("intro", lang))
@@ -1287,6 +1307,13 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     if st.session_state.get("approval_signature") != signature or "approval_table" not in st.session_state:
         st.session_state.approval_table = build_approval_table(recommendations)
         st.session_state.approval_signature = signature
+
+    actor_value = st.text_input(
+        ACTOR_INPUT_LABELS.get(lang, ACTOR_INPUT_LABELS["en"]),
+        value=st.session_state.get("audit_actor", _default_actor()),
+        key="audit_actor",
+    )
+    actor = (actor_value or "").strip() or _default_actor()
 
     # View toggle: card view (mobile-friendly) vs table view (desktop power user)
     view_card = _card_label("view_card", lang)
@@ -1301,15 +1328,19 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     )
 
     if view_mode == view_card:
-        render_approval_cards(recommendations, lang)
+        render_approval_cards(recommendations, lang, actor=actor, audit_dir=AUDIT_LOG_DIR)
     else:
         c1, c2 = st.columns([0.35, 0.65])
         with c1:
             if st.button(alabel("bulk_accept", lang), use_container_width=True):
                 st.session_state.approval_table = accept_price_changes(st.session_state.approval_table)
+                changed = st.session_state.approval_table[st.session_state.approval_table["action"] != "hold"]
+                st.session_state.approval_log = append_audit_log(decision_log_rows(changed, "bulk_accept", actor), AUDIT_LOG_DIR)
         with c2:
             if st.button(alabel("reset", lang), use_container_width=True):
+                row_count = len(st.session_state.approval_table)
                 st.session_state.approval_table = build_approval_table(recommendations)
+                st.session_state.approval_log = append_audit_log(reset_log_row(actor, row_count), AUDIT_LOG_DIR)
 
         st.caption(alabel("editor_caption", lang))
         editor_display = to_editor_display(st.session_state.approval_table, lang)
@@ -1323,24 +1354,22 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
         )
 
         edited_internal = from_editor_display(edited_display, lang)
+        previous_table = st.session_state.approval_table.copy()
         approval_table = st.session_state.approval_table.copy()
         for column in ["selected", "approved_price", "approval_status", "review_comment"]:
             approval_table[column] = edited_internal[column].values
         st.session_state.approval_table = update_manual_flags(approval_table)
+        for event, rows in table_decision_events(previous_table, st.session_state.approval_table):
+            st.session_state.approval_log = append_audit_log(decision_log_rows(rows, event, actor), AUDIT_LOG_DIR)
 
     # Common to both views: full preview, channel prices, push button, audit log
     st.caption(alabel("preview_caption", lang))
     st.dataframe(styled_preview(st.session_state.approval_table, lang), use_container_width=True, hide_index=True)
     render_channel_price_preview(st.session_state.approval_table, lang)
 
-    actor = st.text_input(
-        ACTOR_INPUT_LABELS.get(lang, ACTOR_INPUT_LABELS["en"]),
-        value=st.session_state.get("audit_actor", "demo_user"),
-        key="audit_actor",
-    )
     if st.button(alabel("simulate_push", lang), type="primary", use_container_width=True):
         pushed_table, log_rows, bounds_violations = simulate_push(
-            st.session_state.approval_table, lang, actor=(actor or "").strip() or "demo_user"
+            st.session_state.approval_table, lang, actor=actor
         )
         st.session_state.approval_table = pushed_table
         if bounds_violations > 0:
