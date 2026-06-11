@@ -129,6 +129,14 @@ def _allow_unauthenticated_demo() -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+_MAX_FILE_BYTES: int = 50 * 1024 * 1024  # 50 MB — matches [server] maxUploadSize in config.toml
+
+_PII_COLUMNS: frozenset[str] = frozenset({
+    "name", "guest_name", "phone", "mobile", "email", "passport",
+    "id_card", "id_number", "comment", "remark", "remarks",
+    "address", "nationality", "birthday", "birth_date",
+})
+
 # Module-level failure tracker shared by all sessions of this process, so an
 # attacker cannot reset the counter by simply opening a new browser session.
 _AUTH_FAILURES: dict[str, tuple[int, float]] = {}
@@ -142,6 +150,15 @@ def _client_key() -> str:
         ip = st.context.ip_address
         if ip:
             return str(ip)
+    except Exception:
+        pass
+    # Fallback: use the first IP in X-Forwarded-For set by the trusted proxy.
+    # This only matters when st.context.ip_address is unavailable; in a normal
+    # Caddy setup it is always populated.
+    try:
+        forwarded = st.context.headers.get("X-Forwarded-For", "")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     except Exception:
         pass
     return "unknown"
@@ -1453,7 +1470,12 @@ def render_recommendations(recommendations: pd.DataFrame, lang: str, ui_theme: s
 
 
 def _default_actor() -> str:
-    # Caddy basic_auth forwards the authenticated user via X-Remote-User.
+    # Only trust the X-Remote-User proxy header when explicitly opted in.
+    # Deployment-layer stripping (e.g. Caddy) is a good practice but not a
+    # sufficient substitute: if the proxy is reconfigured the app must not
+    # silently trust whatever header arrives.
+    if not os.environ.get("HOTEL_TRUST_REMOTE_USER"):
+        return "demo_user"
     try:
         header_user = st.context.headers.get("X-Remote-User")
         if header_user:
@@ -1614,14 +1636,19 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
         st.session_state._draft_signature = draft_key
 
 
+def _drop_pii_columns(df: pd.DataFrame) -> pd.DataFrame:
+    to_drop = [c for c in df.columns if c.lower() in _PII_COLUMNS]
+    return df.drop(columns=to_drop) if to_drop else df
+
+
 def render_data_preview(hotel_data, lang: str) -> None:
     st.subheader(t("data_preview", lang))
     with st.expander(t("bookings", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.bookings.head(50), lang), width="stretch")
+        st.dataframe(localize_room_type_values(_drop_pii_columns(hotel_data.bookings).head(50), lang), width="stretch")
     with st.expander(t("inventory", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.inventory.head(50), lang), width="stretch")
+        st.dataframe(localize_room_type_values(_drop_pii_columns(hotel_data.inventory).head(50), lang), width="stretch")
     with st.expander(t("current_prices", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.current_prices.head(50), lang), width="stretch")
+        st.dataframe(localize_room_type_values(_drop_pii_columns(hotel_data.current_prices).head(50), lang), width="stretch")
 
 
 _require_auth()
@@ -1685,6 +1712,14 @@ try:
         if not bookings_file or not inventory_file or not current_prices_file:
             st.info(t("upload_hint", lang))
             st.stop()
+        for _uf, _uname in [
+            (bookings_file, "bookings"),
+            (inventory_file, "inventory"),
+            (current_prices_file, "current_prices"),
+        ]:
+            if _uf.size > _MAX_FILE_BYTES:
+                st.error(f"{_uname}: file exceeds 50 MB limit — please reduce the date range or split the file.")
+                st.stop()
         hotel_data = _cached_load_uploaded_data(
             bookings_file.getvalue(), inventory_file.getvalue(), current_prices_file.getvalue()
         )

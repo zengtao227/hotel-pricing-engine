@@ -133,15 +133,20 @@ sudo systemctl reload caddy
 
 > 两种方案可叠加使用（网络层 + 应用层双重保护），也可单独使用任意一种。密码哈希或明文密码均不得写入 Git。
 
-> **安全要点（公开演示模式必读）**：应用信任 `X-Remote-User` 头作为审计日志操作人。
-> 未启用 basic_auth 时，必须在 `reverse_proxy` 块内显式清除访客自带的该头，
-> 否则任何访客都可以伪造操作人身份：
+> **安全要点（公开演示模式必读）**：应用默认不信任 `X-Remote-User` 头。
+> 只有在 systemd `[Service]` 段显式添加 `Environment="HOTEL_TRUST_REMOTE_USER=1"` 时，
+> 应用才会读取该头作为审计日志操作人。
+>
+> 启用 `HOTEL_TRUST_REMOTE_USER=1` 时，**必须**同时在 Caddy `reverse_proxy` 块内
+> 先清除客户端自带的同名头，否则任何访客都可以伪造操作人身份：
 > ```
 > reverse_proxy localhost:8501 {
->     header_up -X-Remote-User
+>     header_up -X-Remote-User          # 先清除客户端伪造的头
+>     header_up X-Remote-User {http.auth.user.id}   # 再注入 Caddy 认证的真实用户名
 > }
 > ```
-> （Frankfurt VPS 当前演示站已应用此配置。）
+> 未启用 `HOTEL_TRUST_REMOTE_USER=1` 时，actor 字段始终显示为手动输入框（demo 模式），
+> 无论 `X-Remote-User` 头是否存在都不影响应用行为。
 
 ---
 
