@@ -1205,6 +1205,34 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
 def render_recommendations(recommendations: pd.DataFrame, lang: str, ui_theme: str) -> None:
     st.subheader(t("recommendations", lang))
     render_interpretation_expander(lang)
+    _ELASTICITY_NOTE = {
+        "zh": (
+            "**模型说明**：推荐价由等弹性需求模型在允许调价带内枚举得出，"
+            "结果通常是调价带的端点（涨价或降价上限）或恰好清空剩余库存的价格。"
+            "当前价格弹性参数（默认 −1.25）未经真实订单数据校准，"
+            "`最大调价幅度` 是实际有效的风险护栏。"
+        ),
+        "en": (
+            "**Model note**: The recommended price is found by scanning candidate prices within the "
+            "allowed change band using an iso-elastic demand model. The result is almost always "
+            "a band boundary (max increase or max decrease) or the price that just clears remaining "
+            "inventory — not a smooth interior optimum. The default elasticity (−1.25) is not "
+            "calibrated from real booking data; `max price change %` is the effective risk guardrail."
+        ),
+        "de": (
+            "**Modellhinweis**: Der empfohlene Preis wird durch Abtasten von Kandidatenpreisen im "
+            "erlaubten Änderungsband ermittelt. Das Ergebnis ist fast immer ein Bandrand oder der "
+            "Preis, der das verbleibende Inventar abverkauft — kein glatter innerer Optimalwert. "
+            "Die Standard-Preiselastizität (−1,25) ist nicht aus echten Buchungsdaten kalibriert."
+        ),
+        "fr": (
+            "**Note modèle** : Le prix recommandé est obtenu en balayant les prix candidats dans "
+            "la plage autorisée avec un modèle d'élasticité-prix. Le résultat est presque toujours "
+            "une borne de la plage ou le prix qui écoule le stock restant — pas un optimum intérieur. "
+            "L'élasticité par défaut (−1,25) n'est pas calibrée sur des données de réservation réelles."
+        ),
+    }
+    st.info(_ELASTICITY_NOTE.get(lang, _ELASTICITY_NOTE["en"]))
 
     raw_actions = sorted(recommendations["action"].unique())
     action_filter = st.multiselect(
@@ -1289,8 +1317,13 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     render_channel_price_preview(st.session_state.approval_table, lang)
 
     if st.button(alabel("simulate_push", lang), type="primary", use_container_width=True):
-        pushed_table, log_rows = simulate_push(st.session_state.approval_table, lang)
+        pushed_table, log_rows, bounds_violations = simulate_push(st.session_state.approval_table, lang)
         st.session_state.approval_table = pushed_table
+        if bounds_violations > 0:
+            st.warning(
+                f"{'价格边界拦截' if lang == 'zh' else 'Bounds violation blocked'}: "
+                f"{bounds_violations} {'条记录的批准价超出房型价格上下限，未推送。' if lang == 'zh' else 'rows blocked — approved price outside configured floor/ceiling.'}"
+            )
         if log_rows.empty:
             st.info(alabel("no_rows", lang))
         else:
@@ -1412,13 +1445,20 @@ if validation_errors:
         st.write(f"- {error}")
     st.stop()
 
-metrics = calculate_daily_metrics(hotel_data.bookings, hotel_data.inventory)
 observation_date = pd.to_datetime(hotel_data.current_prices["stay_date"]).min()
+# Only use bookings known at observation_date — mirrors the backtest as-of discipline.
+# In live production all booking_dates are ≤ today so this is a no-op; for demo data
+# it correctly excludes bookings placed after the dataset's snapshot date.
+bookings_as_of = hotel_data.bookings[
+    pd.to_datetime(hotel_data.bookings["booking_date"]).dt.normalize()
+    <= pd.to_datetime(observation_date).normalize()
+].copy()
+metrics = calculate_daily_metrics(bookings_as_of, hotel_data.inventory)
 room_price_bounds = room_bounds_from_config(hotel_config)
 
 recommendations = generate_recommendations(
     metrics=metrics,
-    bookings=hotel_data.bookings,
+    bookings=bookings_as_of,
     current_prices=hotel_data.current_prices,
     observation_date=observation_date,
     horizon_days=horizon_days,

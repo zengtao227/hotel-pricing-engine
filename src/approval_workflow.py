@@ -106,7 +106,9 @@ def build_approval_table(recommendations: pd.DataFrame) -> pd.DataFrame:
     df["review_comment"] = ""
     df["push_status"] = "not_pushed"
     df["pushed_at"] = ""
-    return df[DISPLAY_COLUMNS].copy()
+    # Carry floor/ceiling for push-time validation (not shown in editor)
+    extra_cols = [c for c in ["price_floor", "price_ceiling"] if c in df.columns]
+    return df[DISPLAY_COLUMNS + extra_cols].copy()
 
 
 def approval_signature(recommendations: pd.DataFrame) -> str:
@@ -196,16 +198,48 @@ def styled_preview(df: pd.DataFrame, lang: str):
     return display.style.apply(style_row, axis=1).format(price_format)
 
 
-def simulate_push(df: pd.DataFrame, lang: str, actor: str = "demo_user") -> tuple[pd.DataFrame, pd.DataFrame]:
+def _price_within_bounds(approved_price: float, floor, ceiling) -> bool:
+    """Return False if approved_price violates configured floor or ceiling."""
+    try:
+        price = float(approved_price)
+    except (TypeError, ValueError):
+        return False
+    if floor is not None:
+        try:
+            f = float(floor)
+            if f > 0 and price < f - 0.01:
+                return False
+        except (TypeError, ValueError):
+            pass
+    if ceiling is not None:
+        try:
+            c = float(ceiling)
+            if c > 0 and price > c + 0.01:
+                return False
+        except (TypeError, ValueError):
+            pass
+    return True
+
+
+def simulate_push(df: pd.DataFrame, lang: str, actor: str = "demo_user") -> tuple[pd.DataFrame, pd.DataFrame, int]:
+    """Push approved prices. Returns (updated_table, log_rows, bounds_violation_count)."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     out = update_manual_flags(df)
     mask = out["selected"].astype(bool) & (out["approval_status"] == "approved") & (out["push_status"] != "pushed")
-    rows = []
+    has_floor = "price_floor" in out.columns
+    has_ceiling = "price_ceiling" in out.columns
+    rows: list[dict] = []
+    bounds_violations: int = 0
     for idx, row in out[mask].iterrows():
+        floor = row["price_floor"] if has_floor else None
+        ceiling = row["price_ceiling"] if has_ceiling else None
+        if not _price_within_bounds(row["approved_price"], floor, ceiling):
+            bounds_violations += 1
+            continue
         out.at[idx, "push_status"] = "pushed"
         out.at[idx, "pushed_at"] = now
         rows.append({"timestamp": now, "actor": actor, "hotel_id": row["hotel_id"], "room_type": row["room_type"], "stay_date": row["stay_date"], "current_price": row["current_price"], "recommended_price": row["recommended_price"], "approved_price": row["approved_price"], "manual_override": bool(row["manual_override"]), "approval_status": row["approval_status"], "push_status": "pushed", "review_comment": row["review_comment"], "target_system": "SIMULATED_CHANNEL_MANAGER"})
-    return out, pd.DataFrame(rows)
+    return out, pd.DataFrame(rows), bounds_violations
 
 
 def render_approval_cards(recommendations: pd.DataFrame, lang: str) -> None:
