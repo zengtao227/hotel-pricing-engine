@@ -128,7 +128,7 @@
 - 一键模拟推送
 - 重复点击模拟推送不会重复写入已推送行
 - 审批与推送日志下载
-- 审批与推送日志持久化到 `data/audit_logs/price_approval_publishing_log.csv`
+- 审批与推送日志持久化到 `data/audit_logs/price_approval_publishing_log.sqlite`（事务写入 + 软删除归档）
 - Channel Pricing Rules 第一版计算模块：基准价 -> 渠道展示价 -> 估算渠道净收益
 
 下一步增强：

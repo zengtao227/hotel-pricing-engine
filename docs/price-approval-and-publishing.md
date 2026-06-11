@@ -95,9 +95,9 @@
 
 - 在页面中显示。
 - 支持下载为 Excel。
-- 持久化保存到 `data/audit_logs/price_approval_publishing_log.csv`。
+- 持久化保存到 `data/audit_logs/price_approval_publishing_log.sqlite`（SQLite 单文件，写入使用事务，支持多会话并发追加；清空日志为软删除，旧记录会归档到 `audit_log_archive` 表，数据库文件不会被删除；历史 CSV 日志在首次加载时自动迁移）。
 
-`.gitignore` 已经忽略生成的日志 CSV，避免把真实客户操作记录提交到代码仓库。
+`.gitignore` 已经忽略生成的日志文件（CSV 与 SQLite），避免把真实客户操作记录提交到代码仓库。
 
 ## 5. 回测分析
 

@@ -65,6 +65,20 @@ THEME_CONTROL_LABELS = {
     "fr": "Thème de l’interface",
 }
 
+ACTOR_INPUT_LABELS = {
+    "zh": "操作人（记录到审计日志）",
+    "en": "Operator (recorded in audit log)",
+    "de": "Bearbeiter (im Audit-Log erfasst)",
+    "fr": "Opérateur (enregistré dans le journal d’audit)",
+}
+
+OBSERVATION_DATE_TEXT = {
+    "zh": "推荐基准观察日：**{date}**（取自价格表最早日期）。系统仅使用该日之前已知的订单生成推荐；如需基于今天生成推荐，请确保 current_prices 从今天开始。",
+    "en": "Recommendation observation date: **{date}** (earliest date in the price table). Only bookings known by that date are used; to generate recommendations as of today, make sure current_prices starts from today.",
+    "de": "Beobachtungstag der Empfehlungen: **{date}** (frühestes Datum der Preistabelle). Nur bis dahin bekannte Buchungen werden verwendet; für Empfehlungen ab heute muss current_prices ab heute beginnen.",
+    "fr": "Date d’observation des recommandations : **{date}** (première date du tableau des prix). Seules les réservations connues à cette date sont utilisées ; pour des recommandations à partir d’aujourd’hui, current_prices doit commencer aujourd’hui.",
+}
+
 ATTENTION_TEXT = {
     "risk": {
         "zh": "需要特别注意：当前列表中有 {count} 条带风险提示的建议，请优先人工复核。",
@@ -1202,8 +1216,11 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         _show_recommendation_table(priority, lang, ui_theme)
 
 
-def render_recommendations(recommendations: pd.DataFrame, lang: str, ui_theme: str) -> None:
+def render_recommendations(recommendations: pd.DataFrame, lang: str, ui_theme: str, observation_date=None) -> None:
     st.subheader(t("recommendations", lang))
+    if observation_date is not None:
+        obs_template = OBSERVATION_DATE_TEXT.get(lang, OBSERVATION_DATE_TEXT["en"])
+        st.caption(obs_template.format(date=pd.to_datetime(observation_date).date()))
     render_interpretation_expander(lang)
     _ELASTICITY_NOTE = {
         "zh": (
@@ -1316,8 +1333,15 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     st.dataframe(styled_preview(st.session_state.approval_table, lang), use_container_width=True, hide_index=True)
     render_channel_price_preview(st.session_state.approval_table, lang)
 
+    actor = st.text_input(
+        ACTOR_INPUT_LABELS.get(lang, ACTOR_INPUT_LABELS["en"]),
+        value=st.session_state.get("audit_actor", "demo_user"),
+        key="audit_actor",
+    )
     if st.button(alabel("simulate_push", lang), type="primary", use_container_width=True):
-        pushed_table, log_rows, bounds_violations = simulate_push(st.session_state.approval_table, lang)
+        pushed_table, log_rows, bounds_violations = simulate_push(
+            st.session_state.approval_table, lang, actor=(actor or "").strip() or "demo_user"
+        )
         st.session_state.approval_table = pushed_table
         if bounds_violations > 0:
             st.warning(
@@ -1490,7 +1514,7 @@ with tab_dashboard:
     render_sales_dashboard(metrics, recommendations, overview, lang, ui_theme)
 
 with tab_recommendations:
-    render_recommendations(recommendations, lang, ui_theme)
+    render_recommendations(recommendations, lang, ui_theme, observation_date=observation_date)
     export_lang = _export_language_selector(lang)
     st.download_button(
         t("download_excel", lang),

@@ -9,7 +9,7 @@ import streamlit as st
 from .i18n import t, translate_reason_list, translate_risk_list, translate_room_type
 from .metrics import calculate_daily_metrics
 from .pricing_engine import generate_recommendations
-from .revenue_simulation import simulate_candidate_revenue_curve
+from .revenue_simulation import DEFAULT_ELASTICITY, simulate_candidate_revenue_curve
 from .ui_theme import apply_plotly_theme
 
 
@@ -41,6 +41,32 @@ BT = {
     "curve_selector": {"zh": "选择曲线样本", "en": "Select curve sample", "de": "Kurvenbeispiel auswählen", "fr": "Choisir un exemple de courbe"},
     "curve_no_data": {"zh": "当前样本无法生成候选价收益曲线。", "en": "The selected sample cannot generate a candidate-price revenue curve.", "de": "Für dieses Beispiel kann keine Kandidatenpreis-Umsatzkurve erzeugt werden.", "fr": "L’exemple sélectionné ne peut pas générer de courbe de revenu."},
     "no_data": {"zh": "当前数据不足以生成回测结果。", "en": "Not enough data to generate backtest results.", "de": "Nicht genügend Daten für Backtest-Ergebnisse.", "fr": "Données insuffisantes pour générer le backtest."},
+    "observed_section": {"zh": "观测弹性 vs 模型弹性", "en": "Observed vs Model Elasticity", "de": "Beobachtete vs. Modell-Elastizität", "fr": "Élasticité observée vs modèle"},
+    "observed_intro": {
+        "zh": "上方的弹性收益 delta 在数学上恒 ≥ 0，无法证伪弹性假设。本节从历史数据中寻找同房型、相近日期但实际成交均价差异较大的对照组，用真实销量变化反推观测弹性，与模型假设对比——这是弹性假设唯一可证伪的检验。",
+        "en": "The elasticity revenue delta above is mathematically always ≥ 0 and cannot falsify the elasticity assumption. This section finds historical pairs of nearby dates with the same room type but materially different realized ADR, derives observed elasticity from actual volume changes, and compares it with the model assumption — the only falsifiable test of the elasticity.",
+        "de": "Das Elastizitäts-Umsatz-Delta oben ist mathematisch immer ≥ 0 und kann die Elastizitätsannahme nicht falsifizieren. Dieser Abschnitt findet historische Paare naher Tage mit gleichem Zimmertyp, aber deutlich unterschiedlichem realisiertem ADR und leitet daraus die beobachtete Elastizität ab.",
+        "fr": "Le delta de revenu ci-dessus est mathématiquement toujours ≥ 0 et ne peut pas réfuter l’hypothèse d’élasticité. Cette section compare des paires de dates proches, même type de chambre mais ADR réalisé différent, pour en déduire l’élasticité observée.",
+    },
+    "observed_none": {
+        "zh": "历史数据中没有足够的价格变动对照样本（同房型、相近日期、成交均价差异 ≥ 8%）。接入真实数据后此处将自动生成观测弹性分布。",
+        "en": "Not enough historical price-variation pairs (same room type, nearby dates, realized ADR difference ≥ 8%). With real data this section will populate automatically.",
+        "de": "Nicht genügend historische Preisvariationspaare (gleicher Zimmertyp, nahe Tage, ADR-Differenz ≥ 8 %). Mit echten Daten füllt sich dieser Abschnitt automatisch.",
+        "fr": "Pas assez de paires historiques de variation de prix (même type de chambre, dates proches, écart d’ADR ≥ 8 %). Avec des données réelles, cette section se remplira automatiquement.",
+    },
+    "observed_demo_note": {
+        "zh": "当前为演示数据：demo 订单量与价格无因果关系，观测弹性会集中在 0 附近，与模型假设的差异属于预期行为。接入真实酒店数据后此对比才有业务意义。",
+        "en": "Demo data note: demo booking volume has no causal relationship with price, so observed elasticity will center near 0 — the gap versus the model assumption is expected. This comparison becomes meaningful with real hotel data.",
+        "de": "Demo-Datenhinweis: Das Demo-Buchungsvolumen hat keinen kausalen Preisbezug, die beobachtete Elastizität liegt daher nahe 0. Mit echten Hoteldaten wird dieser Vergleich aussagekräftig.",
+        "fr": "Note données démo : le volume de réservations démo n’a aucun lien causal avec le prix, l’élasticité observée sera proche de 0. Cette comparaison devient pertinente avec des données réelles.",
+    },
+    "observed_pairs": {"zh": "有效对照样本", "en": "Valid Pairs", "de": "Gültige Paare", "fr": "Paires valides"},
+    "observed_median": {"zh": "观测弹性中位数", "en": "Observed Median Elasticity", "de": "Median beobachtete Elastizität", "fr": "Élasticité observée médiane"},
+    "model_default": {"zh": "模型默认弹性", "en": "Model Default Elasticity", "de": "Modell-Standardelastizität", "fr": "Élasticité par défaut du modèle"},
+    "model_median_used": {"zh": "本次回测弹性中位数", "en": "Backtest Median Elasticity Used", "de": "Im Backtest verwendeter Median", "fr": "Élasticité médiane du backtest"},
+    "observed_chart": {"zh": "观测弹性分布（虚线：观测中位数 / 模型默认值）", "en": "Observed elasticity distribution (dashed: observed median / model default)", "de": "Verteilung der beobachteten Elastizität (gestrichelt: Median / Modellstandard)", "fr": "Distribution de l’élasticité observée (pointillés : médiane / défaut modèle)"},
+    "axis_observed_elasticity": {"zh": "观测弹性", "en": "Observed Elasticity", "de": "Beobachtete Elastizität", "fr": "Élasticité observée"},
+    "axis_pair_count": {"zh": "样本对数量", "en": "Pair Count", "de": "Anzahl Paare", "fr": "Nombre de paires"},
     "axis_stay_date": {"zh": "入住日期", "en": "Stay Date", "de": "Aufenthaltsdatum", "fr": "Date de séjour"},
     "axis_revenue_delta": {"zh": "收益变化金额", "en": "Revenue Delta", "de": "Umsatzänderung", "fr": "Variation de revenu"},
     "legend_revenue_metric": {"zh": "收益口径", "en": "Revenue Metric", "de": "Umsatzkennzahl", "fr": "Indicateur de revenu"},
@@ -214,6 +240,63 @@ def _candidate_curve_from_row(row, max_change_pct: float, price_rounding_strateg
     curve["is_current_price"] = (curve["candidate_price"] - float(row.current_price)).abs() < 0.01
     curve["is_recommended_price"] = (curve["candidate_price"] - float(row.recommended_price)).abs() < 0.01
     return curve
+
+
+def estimate_observed_elasticities(
+    metrics: pd.DataFrame,
+    max_day_gap: int = 7,
+    min_adr_diff_pct: float = 0.08,
+    max_occupancy: float = 0.95,
+) -> pd.DataFrame:
+    """Derive observed price elasticities from historical realized data.
+
+    Pairs nearby stay dates (same hotel, room type and weekend flag) whose
+    realized ADR differs materially, then computes the arc elasticity
+    (ΔQ/Q̄) / (ΔP/P̄). Days at near-full occupancy are excluded because
+    capacity censoring hides true demand.
+    """
+    m = metrics.copy()
+    m["stay_date"] = pd.to_datetime(m["stay_date"]).dt.normalize()
+    m["sold_rooms"] = pd.to_numeric(m["sold_rooms"], errors="coerce")
+    m["adr"] = pd.to_numeric(m["adr"], errors="coerce")
+    m["occupancy"] = pd.to_numeric(m["occupancy"], errors="coerce")
+    m = m[(m["sold_rooms"] > 0) & (m["adr"] > 0) & (m["occupancy"] < max_occupancy)]
+
+    pairs: list[dict] = []
+    for (hotel_id, room_type, is_weekend), group in m.groupby(["hotel_id", "room_type", "is_weekend"]):
+        g = group.sort_values("stay_date").reset_index(drop=True)
+        for i in range(len(g)):
+            for j in range(i + 1, len(g)):
+                day_gap = int((g.loc[j, "stay_date"] - g.loc[i, "stay_date"]).days)
+                if day_gap > max_day_gap:
+                    break
+                price_a, price_b = float(g.loc[i, "adr"]), float(g.loc[j, "adr"])
+                qty_a, qty_b = float(g.loc[i, "sold_rooms"]), float(g.loc[j, "sold_rooms"])
+                mid_price = (price_a + price_b) / 2.0
+                mid_qty = (qty_a + qty_b) / 2.0
+                if mid_price <= 0 or mid_qty <= 0:
+                    continue
+                price_change = (price_b - price_a) / mid_price
+                if abs(price_change) < min_adr_diff_pct:
+                    continue
+                qty_change = (qty_b - qty_a) / mid_qty
+                pairs.append(
+                    {
+                        "hotel_id": hotel_id,
+                        "room_type": room_type,
+                        "is_weekend": bool(is_weekend),
+                        "stay_date_a": g.loc[i, "stay_date"].date(),
+                        "stay_date_b": g.loc[j, "stay_date"].date(),
+                        "day_gap": day_gap,
+                        "adr_a": round(price_a, 2),
+                        "adr_b": round(price_b, 2),
+                        "sold_a": qty_a,
+                        "sold_b": qty_b,
+                        "price_change_pct": round(price_change, 4),
+                        "observed_elasticity": round(qty_change / price_change, 3),
+                    }
+                )
+    return pd.DataFrame(pairs)
 
 
 def run_static_backtest(metrics, bookings, current_prices, observation_date, horizon_days, max_change_pct, price_rounding_strategy, room_price_bounds=None):
@@ -420,6 +503,38 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
             yaxis_title=bt_label("axis_expected_revenue", lang),
         )
         st.plotly_chart(apply_plotly_theme(curve_fig, ui_theme), use_container_width=True)
+
+    st.subheader(bt_label("observed_section", lang))
+    st.caption(bt_label("observed_intro", lang))
+    observed = estimate_observed_elasticities(metrics)
+    if observed.empty or len(observed) < 10:
+        st.info(bt_label("observed_none", lang))
+    else:
+        if set(observed["hotel_id"].unique()) == {"DEMO_HOTEL"}:
+            st.warning(bt_label("observed_demo_note", lang))
+        observed_median = float(observed["observed_elasticity"].median())
+        model_median = float(pd.to_numeric(detail["demand_elasticity"], errors="coerce").median())
+        o1, o2, o3, o4 = st.columns(4)
+        o1.metric(bt_label("observed_pairs", lang), len(observed))
+        o2.metric(bt_label("observed_median", lang), f"{observed_median:.2f}")
+        o3.metric(bt_label("model_default", lang), f"{DEFAULT_ELASTICITY:.2f}")
+        o4.metric(bt_label("model_median_used", lang), f"{model_median:.2f}")
+
+        display_observed = observed[observed["observed_elasticity"].abs() <= 8].copy()
+        observed_fig = px.histogram(
+            display_observed,
+            x="observed_elasticity",
+            nbins=40,
+            title=bt_label("observed_chart", lang),
+            labels={"observed_elasticity": bt_label("axis_observed_elasticity", lang)},
+        )
+        observed_fig.add_vline(x=observed_median, line_dash="dash", line_color="#059669")
+        observed_fig.add_vline(x=DEFAULT_ELASTICITY, line_dash="dash", line_color="#DC2626")
+        observed_fig.update_layout(
+            xaxis_title=bt_label("axis_observed_elasticity", lang),
+            yaxis_title=bt_label("axis_pair_count", lang),
+        )
+        st.plotly_chart(apply_plotly_theme(observed_fig, ui_theme), use_container_width=True)
 
     st.subheader(bt_label("static_section", lang))
     st.caption(bt_label("static_volume_note", lang))

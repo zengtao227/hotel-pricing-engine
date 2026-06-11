@@ -49,7 +49,7 @@ Streamlit 页面右上角提供语言选择：
    - 人工修改、已推送、已拒绝行会有颜色提示
    - 支持模拟一键推送和下载审批日志
    - 已推送行再次点击推送不会重复写入日志
-   - 审批与推送日志会持久化到 `data/audit_logs/price_approval_publishing_log.csv`
+   - 审批与推送日志会持久化到 `data/audit_logs/price_approval_publishing_log.sqlite`（旧 CSV 自动迁移）
 
 5. **酒店配置**
    - 配置酒店名称、城市、市场定位、货币

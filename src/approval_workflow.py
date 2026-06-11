@@ -25,7 +25,7 @@ A = {
     "download_audit": {"zh": "下载审批与推送日志", "en": "Download approval and publishing log", "de": "Freigabe- und Veröffentlichungslog herunterladen", "fr": "Télécharger le journal de validation et publication"},
     "no_rows": {"zh": "还没有新的、已批准且勾选的价格可推送。", "en": "No new approved and selected prices to publish.", "de": "Keine neuen freigegebenen und ausgewählten Preise zur Veröffentlichung.", "fr": "Aucun nouveau prix validé et sélectionné à publier."},
     "push_success": {"zh": "模拟推送完成", "en": "Simulated publishing completed", "de": "Simulierte Veröffentlichung abgeschlossen", "fr": "Publication simulée terminée"},
-    "editor_caption": {"zh": "可编辑列：是否推送、最终批准价、审核状态、审核备注。手动修改最终价后会自动标记为人工修改。", "en": "Editable columns: publish, approved price, review status and comment. Manual price changes are automatically flagged.", "de": "Editierbare Spalten: veröffentlichen, freigegebener Preis, Prüfstatus und Kommentar. Manuelle Preisänderungen werden automatisch markiert.", "fr": "Colonnes modifiables : publier, prix validé, statut et commentaire. Les modifications manuelles sont signalées automatiquement."},
+    "editor_caption": {"zh": "可编辑列：是否推送、最终批准价、审核状态、审核备注。手动修改最终价后会自动标记为人工修改，但状态保持待审核，需要单独批准后才能推送。", "en": "Editable columns: publish, approved price, review status and comment. Manual price changes are flagged automatically but stay pending — approving is a separate step before publishing.", "de": "Editierbare Spalten: veröffentlichen, freigegebener Preis, Prüfstatus und Kommentar. Manuelle Preisänderungen werden markiert, bleiben aber ausstehend — die Freigabe ist ein separater Schritt.", "fr": "Colonnes modifiables : publier, prix validé, statut et commentaire. Les modifications manuelles sont signalées mais restent en attente — la validation est une étape distincte avant publication."},
     "preview_caption": {"zh": "颜色提示：黄色 = 人工修改；绿色 = 已推送；红色 = 已拒绝。", "en": "Colors: yellow = manual override; green = published; red = rejected.", "de": "Farben: gelb = manuelle Änderung; grün = veröffentlicht; rot = abgelehnt.", "fr": "Couleurs : jaune = modification manuelle ; vert = publié ; rouge = rejeté."},
     "audit_empty": {"zh": "暂无审批或推送日志。", "en": "No approval or publishing log yet.", "de": "Noch kein Freigabe- oder Veröffentlichungslog.", "fr": "Aucun journal de validation ou de publication pour le moment."},
 }
@@ -128,10 +128,11 @@ def accept_price_changes(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def update_manual_flags(df: pd.DataFrame) -> pd.DataFrame:
+    # Manual price edits only flag manual_override; approval stays a separate
+    # explicit action so a typo cannot silently become a publishable price.
     out = df.copy()
     out["approved_price"] = pd.to_numeric(out["approved_price"], errors="coerce").fillna(out["recommended_price"])
     out["manual_override"] = (out["approved_price"].astype(float) - out["recommended_price"].astype(float)).abs() > 0.01
-    out.loc[out["manual_override"] & (out["approval_status"] == "pending"), "approval_status"] = "approved"
     return out
 
 
@@ -203,6 +204,8 @@ def _price_within_bounds(approved_price: float, floor, ceiling) -> bool:
     try:
         price = float(approved_price)
     except (TypeError, ValueError):
+        return False
+    if not (price > 0):
         return False
     if floor is not None:
         try:
