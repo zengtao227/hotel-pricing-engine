@@ -115,7 +115,7 @@ def generate_recommendations(
     historical = m[m["stay_date"] < observation_date].copy()
 
     baselines = (
-        historical.groupby(["room_type", "is_weekend"], as_index=False)
+        historical.groupby(["hotel_id", "room_type", "is_weekend"], as_index=False)
         .agg(
             baseline_occupancy=("occupancy", "median"),
             baseline_adr=("adr", "median"),
@@ -123,7 +123,7 @@ def generate_recommendations(
         )
     )
 
-    recs = future.merge(baselines, how="left", on=["room_type", "is_weekend"])
+    recs = future.merge(baselines, how="left", on=["hotel_id", "room_type", "is_weekend"])
     recs["baseline_occupancy"] = recs["baseline_occupancy"].fillna(historical["occupancy"].median())
     recs["baseline_adr"] = recs["baseline_adr"].fillna(historical["adr"].median())
     recs["baseline_revpar"] = recs["baseline_revpar"].fillna(historical["revpar"].median())

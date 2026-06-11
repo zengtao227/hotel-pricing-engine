@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from io import BytesIO
 
+from .excel_sanitize import sanitize_excel_df
+
 import pandas as pd
 import streamlit as st
 
@@ -453,7 +455,7 @@ def audit_log_bytes(log: pd.DataFrame) -> bytes:
         return b""
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        log.to_excel(writer, sheet_name="approval_log", index=False)
+        sanitize_excel_df(log).to_excel(writer, sheet_name="approval_log", index=False)
         sheet = writer.book["approval_log"]
         sheet.freeze_panes = "A2"
         for column_cells in sheet.columns:

@@ -6,6 +6,9 @@ import pandas as pd
 from .sample_data import build_demo_data
 
 
+MAX_UPLOAD_ROWS = 500_000
+
+
 DATE_COLUMNS = {
     "bookings": ["booking_date", "check_in_date", "check_out_date", "cancelled_at"],
     "inventory": ["stay_date"],
@@ -28,10 +31,20 @@ def _parse_dates(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
     return df
 
 
+def _check_row_limit(df: pd.DataFrame, dataset: str) -> None:
+    if len(df) > MAX_UPLOAD_ROWS:
+        raise ValueError(
+            f"{dataset}: {len(df):,} rows exceeds the {MAX_UPLOAD_ROWS:,}-row upload limit"
+        )
+
+
 def load_hotel_data(bookings_source, inventory_source, current_prices_source) -> HotelData:
     bookings = _parse_dates(pd.read_csv(bookings_source), "bookings")
+    _check_row_limit(bookings, "bookings")
     inventory = _parse_dates(pd.read_csv(inventory_source), "inventory")
+    _check_row_limit(inventory, "inventory")
     current_prices = _parse_dates(pd.read_csv(current_prices_source), "current_prices")
+    _check_row_limit(current_prices, "current_prices")
     return HotelData(bookings=bookings, inventory=inventory, current_prices=current_prices)
 
 

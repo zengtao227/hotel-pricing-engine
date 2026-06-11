@@ -69,6 +69,11 @@ def validate_bookings(bookings: pd.DataFrame) -> list[str]:
     if invalid_rooms.any():
         errors.append(f"bookings: {int(invalid_rooms.sum())} rows have invalid or non-positive rooms")
 
+    nights_numeric = pd.to_numeric(bookings["nights"], errors="coerce")
+    invalid_nights = nights_numeric.isna() | (nights_numeric <= 0) | (nights_numeric > 365)
+    if invalid_nights.any():
+        errors.append(f"bookings: {int(invalid_nights.sum())} rows have invalid nights (must be 1–365)")
+
     return errors
 
 
@@ -80,7 +85,11 @@ def validate_inventory(inventory: pd.DataFrame) -> list[str]:
     if inventory["stay_date"].isna().any():
         errors.append("inventory: `stay_date` contains invalid dates")
 
-    negative_inventory = pd.to_numeric(inventory["available_rooms"], errors="coerce") < 0
+    available_numeric = pd.to_numeric(inventory["available_rooms"], errors="coerce")
+    invalid_available = available_numeric.isna()
+    if invalid_available.any():
+        errors.append(f"inventory: {int(invalid_available.sum())} rows have non-numeric available_rooms")
+    negative_inventory = available_numeric < 0
     if negative_inventory.any():
         errors.append(f"inventory: {int(negative_inventory.sum())} rows have negative available_rooms")
 
@@ -99,9 +108,10 @@ def validate_current_prices(current_prices: pd.DataFrame) -> list[str]:
     if current_prices["stay_date"].isna().any():
         errors.append("current_prices: `stay_date` contains invalid dates")
 
-    non_positive_price = pd.to_numeric(current_prices["current_price"], errors="coerce") <= 0
-    if non_positive_price.any():
-        errors.append(f"current_prices: {int(non_positive_price.sum())} rows have non-positive current_price")
+    price_numeric = pd.to_numeric(current_prices["current_price"], errors="coerce")
+    invalid_price = price_numeric.isna() | (price_numeric <= 0)
+    if invalid_price.any():
+        errors.append(f"current_prices: {int(invalid_price.sum())} rows have invalid or non-positive current_price")
 
     return errors
 
@@ -128,6 +138,53 @@ def validate_cross_table_consistency(
         errors.append(
             f"current_prices: hotel_id(s) {sorted(missing_in_prices)} appear in bookings but not in current_prices"
         )
+
+    # hotel_id + room_type coverage
+    booking_pairs = set(
+        bookings[["hotel_id", "room_type"]].dropna().astype(str).drop_duplicates().itertuples(index=False, name=None)
+    )
+    inv_pairs = set(
+        inventory[["hotel_id", "room_type"]].dropna().astype(str).drop_duplicates().itertuples(index=False, name=None)
+    )
+    prices_pairs = set(
+        current_prices[["hotel_id", "room_type"]].dropna().astype(str).drop_duplicates().itertuples(index=False, name=None)
+    )
+    missing_inv_pairs = booking_pairs - inv_pairs
+    if missing_inv_pairs:
+        errors.append(
+            f"inventory: {len(missing_inv_pairs)} hotel+room_type combination(s) in bookings have no inventory rows"
+        )
+    missing_price_pairs = booking_pairs - prices_pairs
+    if missing_price_pairs:
+        errors.append(
+            f"current_prices: {len(missing_price_pairs)} hotel+room_type combination(s) in bookings have no price rows"
+        )
+
+    # Overbooking check: aggregate confirmed bookings per check_in_date vs inventory
+    _ACTIVE = {"confirmed", "stayed", "checked_in", "checked_out"}
+    if not bookings.empty and not inventory.empty and "status" in bookings.columns:
+        active = bookings[bookings["status"].astype(str).str.lower().isin(_ACTIVE)].copy()
+        if not active.empty:
+            active["check_in_date"] = pd.to_datetime(active["check_in_date"], errors="coerce")
+            booked_per_date = (
+                active.groupby(["hotel_id", "room_type", "check_in_date"], as_index=False)["rooms"]
+                .sum()
+                .rename(columns={"check_in_date": "stay_date"})
+            )
+            inv_avail = inventory.copy()
+            inv_avail["stay_date"] = pd.to_datetime(inv_avail["stay_date"], errors="coerce")
+            merged = booked_per_date.merge(
+                inv_avail[["hotel_id", "room_type", "stay_date", "available_rooms"]],
+                on=["hotel_id", "room_type", "stay_date"],
+                how="left",
+            )
+            merged["rooms"] = pd.to_numeric(merged["rooms"], errors="coerce").fillna(0)
+            merged["available_rooms"] = pd.to_numeric(merged["available_rooms"], errors="coerce").fillna(0)
+            overbooked = merged["rooms"] > merged["available_rooms"]
+            if overbooked.any():
+                errors.append(
+                    f"bookings: {int(overbooked.sum())} date(s) have total confirmed rooms exceeding available inventory"
+                )
 
     if not current_prices.empty and not inventory.empty:
         inv_dates = pd.to_datetime(inventory["stay_date"], errors="coerce").dropna()

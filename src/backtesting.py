@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from .excel_sanitize import sanitize_excel_df
 from .i18n import t, translate_reason_list, translate_risk_list, translate_room_type
 from .metrics import calculate_daily_metrics
 from .pricing_engine import generate_recommendations
@@ -389,7 +390,7 @@ def localized_backtest_detail(detail: pd.DataFrame, lang: str) -> pd.DataFrame:
 def backtest_excel_bytes(detail: pd.DataFrame, lang: str) -> bytes:
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        localized_backtest_detail(detail, lang).to_excel(writer, sheet_name=bt_label("details", lang)[:31], index=False)
+        sanitize_excel_df(localized_backtest_detail(detail, lang)).to_excel(writer, sheet_name=bt_label("details", lang)[:31], index=False)
         sheet = writer.book.worksheets[0]
         sheet.freeze_panes = "A2"
         for column_cells in sheet.columns:

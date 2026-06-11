@@ -25,7 +25,7 @@ def expand_bookings_to_room_nights(bookings: pd.DataFrame) -> pd.DataFrame:
     b = bookings.copy()
     b["check_in_date"] = pd.to_datetime(b["check_in_date"])
     b["booking_date"] = pd.to_datetime(b["booking_date"])
-    b["nights"] = pd.to_numeric(b.get("nights", 1), errors="coerce").fillna(1).clip(lower=1).astype(int)
+    b["nights"] = pd.to_numeric(b.get("nights", 1), errors="coerce").fillna(1).clip(lower=1, upper=365).astype(int)
     b["rooms"] = pd.to_numeric(b.get("rooms", 1), errors="coerce").fillna(1).astype(int)
     b["_status"] = b["status"].astype(str).str.lower()
     b["_active"] = b["_status"].isin(ACTIVE_STATUSES)

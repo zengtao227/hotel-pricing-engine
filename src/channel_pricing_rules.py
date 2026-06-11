@@ -6,6 +6,7 @@ from typing import Any, Iterable
 
 import pandas as pd
 
+from .excel_sanitize import sanitize_excel_df
 from .price_rounding import round_to_price_ending
 
 
@@ -197,7 +198,7 @@ def add_channel_review_flags(
 def channel_prices_excel_bytes(channel_prices: pd.DataFrame) -> bytes:
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        channel_prices.to_excel(writer, sheet_name="channel_prices", index=False)
+        sanitize_excel_df(channel_prices).to_excel(writer, sheet_name="channel_prices", index=False)
         sheet = writer.book["channel_prices"]
         sheet.freeze_panes = "A2"
         for column_cells in sheet.columns:

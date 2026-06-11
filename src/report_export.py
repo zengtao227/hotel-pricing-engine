@@ -2,6 +2,7 @@ from io import BytesIO
 
 import pandas as pd
 
+from .excel_sanitize import sanitize_excel_df
 from .i18n import LANGUAGES, localized_recommendations, localize_room_type_values
 
 
@@ -64,8 +65,8 @@ def build_excel_report(metrics: pd.DataFrame, recommendations: pd.DataFrame, lan
 
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        localized_recs.to_excel(writer, sheet_name=_sheet_name("recommendations", lang), index=False)
-        localized_metrics.to_excel(writer, sheet_name=_sheet_name("metrics", lang), index=False)
+        sanitize_excel_df(localized_recs).to_excel(writer, sheet_name=_sheet_name("recommendations", lang), index=False)
+        sanitize_excel_df(localized_metrics).to_excel(writer, sheet_name=_sheet_name("metrics", lang), index=False)
 
         workbook = writer.book
         for sheet in workbook.worksheets:
