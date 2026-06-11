@@ -6,7 +6,7 @@
 - **项目路径**：`/data/projects/hotel-pricing-engine`
 - **访问地址**：`https://hotel.zengsg.dpdns.org`
 - **运行方式**：systemd 服务 `hotel-pricing-engine.service`
-- **认证**：默认无密码；设置 `HOTEL_APP_PASSWORD` 环境变量可启用应用层密码门
+- **认证**：公网访问默认需要 `HOTEL_APP_PASSWORD`；仅 localhost 或显式 `HOTEL_ALLOW_UNAUTHENTICATED=1` 可无密码访问
 
 ## systemd 服务
 
@@ -83,9 +83,9 @@ hotel.zengsg.dpdns.org {
 sudo systemctl reload caddy
 ```
 
-### 启用 Basic Auth（可选，演示保护）
+### 启用访问保护（公网必需）
 
-**方案一：应用层密码门（推荐）**
+**方案一：应用层密码门（必需，推荐）**
 
 在 systemd 服务的 `[Service]` 段添加环境变量，Streamlit 启动时读取：
 
@@ -102,9 +102,9 @@ sudo systemctl daemon-reload
 sudo systemctl restart hotel-pricing-engine
 ```
 
-未设置 `HOTEL_APP_PASSWORD` 时应用不加密码，直接访问。
+未设置 `HOTEL_APP_PASSWORD` 时，应用只允许 localhost 本地调试访问；公网请求会直接停止并提示需要配置密码。若确实要开放纯 Demo 站，必须显式设置 `HOTEL_ALLOW_UNAUTHENTICATED=1`，且不得上传真实客户数据。
 
-**方案二：Caddy basic_auth（网络层保护）**
+**方案二：Caddy basic_auth（网络层加固）**
 
 先生成 bcrypt 哈希（在服务器上执行）：
 ```bash
@@ -277,16 +277,19 @@ sudo systemctl reload caddy
 
 ---
 
-## 当前运营策略：公开演示模式
+## 当前运营策略：受控演示模式
 
-**没有签约客户之前，网站保持公开、无密码**。
+**默认不要让公网入口无密码运行。**
 
-理由：
-- 任何潜在客户、合作伙伴、投资人都可以直接访问，不需要提前要账号
-- 演示数据是内置 Demo，没有真实酒店数据泄露风险
-- 降低演示门槛，加快商务推进
+原因：
+- 应用包含 CSV 上传、数据预览、审批模拟和审计日志下载能力
+- 演示站也可能被误上传真实酒店数据
+- 无密码公网入口会被爬虫、扫描器和无关访问者反复触发
 
-`HOTEL_APP_PASSWORD` 保持不设置。代码侧密码门已就位，需要时随时可以开启，不需要修改代码。
+推荐做法：
+- 对销售演示使用 `HOTEL_APP_PASSWORD`
+- 需要完全公开的纯 Demo 站时，显式设置 `HOTEL_ALLOW_UNAUTHENTICATED=1`
+- 公开 Demo 站只使用内置数据，不上传真实酒店 CSV
 
 ---
 

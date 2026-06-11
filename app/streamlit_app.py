@@ -4,6 +4,7 @@ import os
 import secrets
 import sys
 import time
+from hashlib import sha256
 from html import escape
 from pathlib import Path
 
@@ -93,11 +94,35 @@ def _cached_generate_recommendations(
 st.set_page_config(page_title="Hotel Pricing Engine", layout="wide")
 
 
+def _request_host() -> str:
+    try:
+        return str(st.context.headers.get("Host", "") or "").split(":")[0].strip().lower()
+    except Exception:
+        return ""
+
+
+def _is_local_request() -> bool:
+    host = _request_host()
+    return host in {"", "localhost", "127.0.0.1", "::1"} or host.endswith(".localhost")
+
+
+def _allow_unauthenticated_demo() -> bool:
+    value = os.environ.get("HOTEL_ALLOW_UNAUTHENTICATED", "")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _require_auth() -> None:
-    """Password gate controlled by HOTEL_APP_PASSWORD env var. No-op if unset."""
+    """Password gate controlled by HOTEL_APP_PASSWORD env var.
+
+    Localhost remains open for development. Public requests fail closed unless
+    HOTEL_APP_PASSWORD is set or HOTEL_ALLOW_UNAUTHENTICATED=1 is explicitly used.
+    """
     password = os.environ.get("HOTEL_APP_PASSWORD", "")
     if not password:
-        return
+        if _is_local_request() or _allow_unauthenticated_demo():
+            return
+        st.error("HOTEL_APP_PASSWORD is required for non-local access.")
+        st.stop()
     if st.session_state.get("_authenticated"):
         return
 
@@ -1370,6 +1395,11 @@ def _default_actor() -> str:
     return "demo_user"
 
 
+def _approval_draft_key(signature: str, actor: str) -> str:
+    actor_hash = sha256(actor.encode("utf-8")).hexdigest()[:16]
+    return f"{signature}:{actor_hash}"
+
+
 def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -> None:
     st.subheader(alabel("tab", lang))
     st.write(alabel("intro", lang))
@@ -1377,18 +1407,21 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     if "approval_log" not in st.session_state:
         st.session_state.approval_log = load_audit_log(AUDIT_LOG_DIR)
 
-    signature = approval_signature(recommendations)
-    if st.session_state.get("approval_signature") != signature or "approval_table" not in st.session_state:
-        draft = load_approval_draft(signature, AUDIT_LOG_DIR)
-        st.session_state.approval_table = draft if draft is not None else build_approval_table(recommendations)
-        st.session_state.approval_signature = signature
-
+    header_actor = _default_actor()
     actor_value = st.text_input(
         ACTOR_INPUT_LABELS.get(lang, ACTOR_INPUT_LABELS["en"]),
-        value=st.session_state.get("audit_actor", _default_actor()),
+        value=st.session_state.get("audit_actor", header_actor),
         key="audit_actor",
+        disabled=header_actor != "demo_user",
     )
-    actor = (actor_value or "").strip() or _default_actor()
+    actor = header_actor if header_actor != "demo_user" else (actor_value or "").strip() or header_actor
+
+    signature = approval_signature(recommendations)
+    draft_key = _approval_draft_key(signature, actor)
+    if st.session_state.get("approval_signature") != draft_key or "approval_table" not in st.session_state:
+        draft = load_approval_draft(draft_key, AUDIT_LOG_DIR)
+        st.session_state.approval_table = draft if draft is not None else build_approval_table(recommendations)
+        st.session_state.approval_signature = draft_key
 
     # View toggle: card view (mobile-friendly) vs table view (desktop power user)
     view_card = _card_label("view_card", lang)
@@ -1504,9 +1537,13 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
         )
 
     table_hash = int(pd.util.hash_pandas_object(st.session_state.approval_table).sum())
-    if st.session_state.get("_draft_hash") != table_hash:
-        save_approval_draft(st.session_state.approval_table, signature, AUDIT_LOG_DIR)
+    if (
+        st.session_state.get("_draft_hash") != table_hash
+        or st.session_state.get("_draft_signature") != draft_key
+    ):
+        save_approval_draft(st.session_state.approval_table, draft_key, AUDIT_LOG_DIR)
         st.session_state._draft_hash = table_hash
+        st.session_state._draft_signature = draft_key
 
 
 def render_data_preview(hotel_data, lang: str) -> None:

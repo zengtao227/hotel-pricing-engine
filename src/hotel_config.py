@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from copy import deepcopy
 from typing import Any
 
@@ -8,7 +9,7 @@ import pandas as pd
 import streamlit as st
 
 from .i18n import LANGUAGES, t, translate_room_type
-from .price_rounding import round_to_price_ending
+from .price_rounding import PRICE_ROUNDING_STRATEGIES, round_to_price_ending
 
 
 DEFAULT_HOTEL_CONFIG: dict[str, Any] = {
@@ -27,6 +28,9 @@ DEFAULT_HOTEL_CONFIG: dict[str, Any] = {
         {"room_type": "Family Room", "room_code": "FAM", "base_price": 588.0, "min_price": 488.0, "max_price": 888.0, "weekend_uplift": 40.0, "enabled": True},
     ],
 }
+
+MAX_CONFIG_UPLOAD_BYTES = 200_000
+MAX_ROOM_TYPES = 200
 
 LABELS = {
     "tab": {"zh": "酒店配置", "en": "Hotel Configuration", "de": "Hotelkonfiguration", "fr": "Configuration hôtel"},
@@ -80,8 +84,93 @@ def config_to_json_bytes(config: dict[str, Any]) -> bytes:
     return json.dumps(config, ensure_ascii=False, indent=2).encode("utf-8")
 
 
+def _finite_non_negative_float(value: Any, field_name: str) -> float:
+    try:
+        number = float(value or 0)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid hotel config: `{field_name}` must be a number") from None
+    if not math.isfinite(number) or number < 0:
+        raise ValueError(f"Invalid hotel config: `{field_name}` must be a non-negative finite number")
+    return number
+
+
+def normalize_hotel_config(config: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(config, dict):
+        raise ValueError("Invalid hotel config: root must be a JSON object")
+
+    normalized = default_hotel_config()
+    for field in ["hotel_name", "city", "market_positioning"]:
+        if field in config:
+            normalized[field] = str(config.get(field, "")).strip()
+
+    currency = str(config.get("currency", normalized["currency"])).strip().upper()
+    normalized["currency"] = currency if currency in {"CNY", "CHF", "EUR", "USD"} else normalized["currency"]
+
+    language = str(config.get("default_language", normalized["default_language"])).strip()
+    normalized["default_language"] = language if language in LANGUAGES else normalized["default_language"]
+    normalized["apply_configured_prices"] = bool(config.get("apply_configured_prices", normalized["apply_configured_prices"]))
+
+    if "default_horizon_days" in config:
+        horizon_days = int(_finite_non_negative_float(config["default_horizon_days"], "default_horizon_days"))
+        normalized["default_horizon_days"] = min(max(horizon_days, 7), 60)
+    if "default_max_change_pct" in config:
+        max_change_pct = _finite_non_negative_float(config["default_max_change_pct"], "default_max_change_pct")
+        normalized["default_max_change_pct"] = min(max(max_change_pct, 0.05), 0.30)
+    if config.get("default_price_rounding_strategy"):
+        rounding_strategy = str(config["default_price_rounding_strategy"])
+        normalized["default_price_rounding_strategy"] = (
+            rounding_strategy if rounding_strategy in PRICE_ROUNDING_STRATEGIES else normalized["default_price_rounding_strategy"]
+        )
+
+    room_types = config.get("room_types", normalized["room_types"])
+    if not isinstance(room_types, list):
+        raise ValueError("Invalid hotel config: `room_types` must be a list")
+    if len(room_types) > MAX_ROOM_TYPES:
+        raise ValueError(f"Invalid hotel config: `room_types` exceeds {MAX_ROOM_TYPES} entries")
+
+    rooms: list[dict[str, Any]] = []
+    seen_room_types: set[str] = set()
+    for room in room_types:
+        if not isinstance(room, dict):
+            raise ValueError("Invalid hotel config: every room type entry must be an object")
+        room_type = str(room.get("room_type", "")).strip()
+        if not room_type:
+            raise ValueError("Invalid hotel config: every room type needs `room_type`")
+        if room_type in seen_room_types:
+            raise ValueError(f"Invalid hotel config: duplicate room_type `{room_type}`")
+        seen_room_types.add(room_type)
+
+        base_price = _finite_non_negative_float(room.get("base_price", 0), "base_price")
+        min_price = _finite_non_negative_float(room.get("min_price", 0), "min_price")
+        max_price = _finite_non_negative_float(room.get("max_price", 0), "max_price")
+        weekend_uplift = _finite_non_negative_float(room.get("weekend_uplift", 0), "weekend_uplift")
+        if max_price and max_price < min_price:
+            raise ValueError(f"Invalid hotel config: max_price is below min_price for `{room_type}`")
+        if min_price and base_price < min_price:
+            base_price = min_price
+        if max_price and base_price > max_price:
+            base_price = max_price
+
+        rooms.append(
+            {
+                "room_type": room_type,
+                "room_code": str(room.get("room_code", "")).strip(),
+                "base_price": base_price,
+                "min_price": min_price,
+                "max_price": max_price,
+                "weekend_uplift": weekend_uplift,
+                "enabled": bool(room.get("enabled", True)),
+            }
+        )
+    normalized["room_types"] = rooms
+    return normalized
+
+
 def load_config_from_upload(uploaded_file) -> dict[str, Any]:
-    return json.loads(uploaded_file.getvalue().decode("utf-8"))
+    raw = uploaded_file.getvalue()
+    if len(raw) > MAX_CONFIG_UPLOAD_BYTES:
+        raise ValueError(f"Hotel config JSON exceeds {MAX_CONFIG_UPLOAD_BYTES:,} bytes")
+    return normalize_hotel_config(json.loads(raw.decode("utf-8")))
 
 
 def room_config_dataframe(config: dict[str, Any], lang: str) -> pd.DataFrame:
@@ -104,7 +193,7 @@ def dataframe_to_room_config(df: pd.DataFrame) -> list[dict[str, Any]]:
         if base_price > max_price and max_price > 0:
             base_price = max_price
         rooms.append({"room_type": str(row.get("room_type", "")).strip(), "room_code": str(row.get("room_code", "")).strip(), "base_price": base_price, "min_price": min_price, "max_price": max_price, "weekend_uplift": float(row.get("weekend_uplift", 0) or 0), "enabled": bool(row.get("enabled", True))})
-    return [room for room in rooms if room["room_type"]]
+    return normalize_hotel_config({"room_types": [room for room in rooms if room["room_type"]]})["room_types"]
 
 
 def apply_config_to_current_prices(current_prices: pd.DataFrame, config: dict[str, Any], rounding_strategy: str) -> pd.DataFrame:
@@ -174,7 +263,10 @@ def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, A
         disabled=["room_name"],
         key="hotel_room_config_editor",
     )
-    config["room_types"] = dataframe_to_room_config(edited)
+    try:
+        config["room_types"] = dataframe_to_room_config(edited)
+    except ValueError as exc:
+        st.error(str(exc))
 
     c1, c2, c3 = st.columns(3)
     if c1.button(label("save_session", lang), width="stretch"):

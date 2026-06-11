@@ -39,11 +39,11 @@ def _check_row_limit(df: pd.DataFrame, dataset: str) -> None:
 
 
 def load_hotel_data(bookings_source, inventory_source, current_prices_source) -> HotelData:
-    bookings = _parse_dates(pd.read_csv(bookings_source), "bookings")
+    bookings = _parse_dates(pd.read_csv(bookings_source, nrows=MAX_UPLOAD_ROWS + 1), "bookings")
     _check_row_limit(bookings, "bookings")
-    inventory = _parse_dates(pd.read_csv(inventory_source), "inventory")
+    inventory = _parse_dates(pd.read_csv(inventory_source, nrows=MAX_UPLOAD_ROWS + 1), "inventory")
     _check_row_limit(inventory, "inventory")
-    current_prices = _parse_dates(pd.read_csv(current_prices_source), "current_prices")
+    current_prices = _parse_dates(pd.read_csv(current_prices_source, nrows=MAX_UPLOAD_ROWS + 1), "current_prices")
     _check_row_limit(current_prices, "current_prices")
     return HotelData(bookings=bookings, inventory=inventory, current_prices=current_prices)
 

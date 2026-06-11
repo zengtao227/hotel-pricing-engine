@@ -1,4 +1,9 @@
+import numpy as np
 import pandas as pd
+
+
+ACTIVE_STATUSES = {"confirmed", "stayed", "checked_in", "checked_out"}
+ALLOWED_STATUSES = ACTIVE_STATUSES | {"cancelled"}
 
 
 REQUIRED_COLUMNS = {
@@ -59,20 +64,38 @@ def validate_bookings(bookings: pd.DataFrame) -> list[str]:
     if bad_lead_time.any():
         errors.append(f"bookings: {int(bad_lead_time.sum())} rows have booking_date > check_in_date")
 
+    status_normalized = bookings["status"].astype(str).str.lower()
+    invalid_status = ~status_normalized.isin(ALLOWED_STATUSES)
+    if invalid_status.any():
+        errors.append(f"bookings: {int(invalid_status.sum())} rows have unsupported status")
+
     daily_rate_numeric = pd.to_numeric(bookings["daily_rate"], errors="coerce")
-    invalid_rate = daily_rate_numeric.isna() | (daily_rate_numeric <= 0)
+    invalid_rate = daily_rate_numeric.isna() | ~np.isfinite(daily_rate_numeric) | (daily_rate_numeric <= 0)
     if invalid_rate.any():
         errors.append(f"bookings: {int(invalid_rate.sum())} rows have invalid or non-positive daily_rate")
 
     rooms_numeric = pd.to_numeric(bookings["rooms"], errors="coerce")
-    invalid_rooms = rooms_numeric.isna() | (rooms_numeric <= 0)
+    invalid_rooms = rooms_numeric.isna() | ~np.isfinite(rooms_numeric) | (rooms_numeric <= 0) | (rooms_numeric % 1 != 0)
     if invalid_rooms.any():
-        errors.append(f"bookings: {int(invalid_rooms.sum())} rows have invalid or non-positive rooms")
+        errors.append(f"bookings: {int(invalid_rooms.sum())} rows have invalid rooms (must be positive whole numbers)")
 
     nights_numeric = pd.to_numeric(bookings["nights"], errors="coerce")
-    invalid_nights = nights_numeric.isna() | (nights_numeric <= 0) | (nights_numeric > 365)
+    invalid_nights = nights_numeric.isna() | ~np.isfinite(nights_numeric) | (nights_numeric <= 0) | (nights_numeric > 365) | (nights_numeric % 1 != 0)
     if invalid_nights.any():
-        errors.append(f"bookings: {int(invalid_nights.sum())} rows have invalid nights (must be 1–365)")
+        errors.append(f"bookings: {int(invalid_nights.sum())} rows have invalid nights (must be whole numbers from 1–365)")
+
+    valid_stay_dates = bookings["check_in_date"].notna() & bookings["check_out_date"].notna()
+    valid_night_values = ~invalid_nights
+    expected_nights = (bookings["check_out_date"] - bookings["check_in_date"]).dt.days
+    mismatched_nights = valid_stay_dates & valid_night_values & (nights_numeric != expected_nights)
+    if mismatched_nights.any():
+        errors.append(f"bookings: {int(mismatched_nights.sum())} rows have nights inconsistent with check_in/check_out dates")
+
+    for revenue_column in ["gross_room_revenue", "net_room_revenue"]:
+        revenue_numeric = pd.to_numeric(bookings[revenue_column], errors="coerce")
+        invalid_revenue = revenue_numeric.isna() | ~np.isfinite(revenue_numeric) | (revenue_numeric < 0)
+        if invalid_revenue.any():
+            errors.append(f"bookings: {int(invalid_revenue.sum())} rows have invalid or negative {revenue_column}")
 
     return errors
 
@@ -86,12 +109,23 @@ def validate_inventory(inventory: pd.DataFrame) -> list[str]:
         errors.append("inventory: `stay_date` contains invalid dates")
 
     available_numeric = pd.to_numeric(inventory["available_rooms"], errors="coerce")
-    invalid_available = available_numeric.isna()
+    invalid_available = available_numeric.isna() | ~np.isfinite(available_numeric) | (available_numeric % 1 != 0)
     if invalid_available.any():
-        errors.append(f"inventory: {int(invalid_available.sum())} rows have non-numeric available_rooms")
+        errors.append(f"inventory: {int(invalid_available.sum())} rows have invalid available_rooms (must be whole numbers)")
     negative_inventory = available_numeric < 0
     if negative_inventory.any():
         errors.append(f"inventory: {int(negative_inventory.sum())} rows have negative available_rooms")
+
+    out_of_order_numeric = pd.to_numeric(inventory["out_of_order_rooms"], errors="coerce")
+    invalid_out_of_order = out_of_order_numeric.isna() | ~np.isfinite(out_of_order_numeric) | (out_of_order_numeric % 1 != 0)
+    if invalid_out_of_order.any():
+        errors.append(f"inventory: {int(invalid_out_of_order.sum())} rows have invalid out_of_order_rooms (must be whole numbers)")
+    negative_out_of_order = out_of_order_numeric < 0
+    if negative_out_of_order.any():
+        errors.append(f"inventory: {int(negative_out_of_order.sum())} rows have negative out_of_order_rooms")
+    sellable_negative = (available_numeric - out_of_order_numeric) < 0
+    if sellable_negative.any():
+        errors.append(f"inventory: {int(sellable_negative.sum())} rows have out_of_order_rooms greater than available_rooms")
 
     duplicated = inventory.duplicated(["hotel_id", "room_type", "stay_date"]).sum()
     if duplicated:
@@ -109,9 +143,13 @@ def validate_current_prices(current_prices: pd.DataFrame) -> list[str]:
         errors.append("current_prices: `stay_date` contains invalid dates")
 
     price_numeric = pd.to_numeric(current_prices["current_price"], errors="coerce")
-    invalid_price = price_numeric.isna() | (price_numeric <= 0)
+    invalid_price = price_numeric.isna() | ~np.isfinite(price_numeric) | (price_numeric <= 0)
     if invalid_price.any():
         errors.append(f"current_prices: {int(invalid_price.sum())} rows have invalid or non-positive current_price")
+
+    duplicated = current_prices.duplicated(["hotel_id", "room_type", "stay_date"]).sum()
+    if duplicated:
+        errors.append(f"current_prices: {int(duplicated)} duplicate hotel_id + room_type + stay_date rows")
 
     return errors
 
@@ -160,6 +198,30 @@ def validate_cross_table_consistency(
             f"current_prices: {len(missing_price_pairs)} hotel+room_type combination(s) in bookings have no price rows"
         )
 
+    inventory_keys = set(
+        inventory[["hotel_id", "room_type", "stay_date"]]
+        .dropna()
+        .assign(stay_date=lambda df: pd.to_datetime(df["stay_date"], errors="coerce").dt.normalize())
+        .dropna()
+        .astype(str)
+        .drop_duplicates()
+        .itertuples(index=False, name=None)
+    )
+    price_keys = set(
+        current_prices[["hotel_id", "room_type", "stay_date"]]
+        .dropna()
+        .assign(stay_date=lambda df: pd.to_datetime(df["stay_date"], errors="coerce").dt.normalize())
+        .dropna()
+        .astype(str)
+        .drop_duplicates()
+        .itertuples(index=False, name=None)
+    )
+    price_without_inventory_keys = price_keys - inventory_keys
+    if price_without_inventory_keys:
+        errors.append(
+            f"inventory: {len(price_without_inventory_keys)} current_price date row(s) have no matching inventory"
+        )
+
     # Overbooking check: aggregate confirmed bookings per check_in_date vs inventory
     _ACTIVE = {"confirmed", "stayed", "checked_in", "checked_out"}
     if not bookings.empty and not inventory.empty and "status" in bookings.columns:
@@ -178,14 +240,18 @@ def validate_cross_table_consistency(
             )
             inv_avail = inventory.copy()
             inv_avail["stay_date"] = pd.to_datetime(inv_avail["stay_date"], errors="coerce")
+            inv_avail["sellable_rooms"] = (
+                pd.to_numeric(inv_avail["available_rooms"], errors="coerce").fillna(0)
+                - pd.to_numeric(inv_avail["out_of_order_rooms"], errors="coerce").fillna(0)
+            )
             merged = booked_per_date.merge(
-                inv_avail[["hotel_id", "room_type", "stay_date", "available_rooms"]],
+                inv_avail[["hotel_id", "room_type", "stay_date", "sellable_rooms"]],
                 on=["hotel_id", "room_type", "stay_date"],
                 how="left",
             )
             merged["rooms"] = pd.to_numeric(merged["rooms"], errors="coerce").fillna(0)
-            merged["available_rooms"] = pd.to_numeric(merged["available_rooms"], errors="coerce").fillna(0)
-            overbooked = merged["rooms"] > merged["available_rooms"]
+            merged["sellable_rooms"] = pd.to_numeric(merged["sellable_rooms"], errors="coerce").fillna(0)
+            overbooked = merged["rooms"] > merged["sellable_rooms"]
             if overbooked.any():
                 errors.append(
                     f"bookings: {int(overbooked.sum())} date(s) have total confirmed rooms exceeding available inventory"

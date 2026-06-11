@@ -73,11 +73,27 @@ class TestValidateBookings:
 
     def test_invalid_rooms_zero(self):
         errors = validate_bookings(_bookings(rooms=[0]))
-        assert any("invalid or non-positive rooms" in e for e in errors)
+        assert any("invalid rooms" in e for e in errors)
+
+    def test_fractional_rooms_rejected(self):
+        errors = validate_bookings(_bookings(rooms=[1.5]))
+        assert any("invalid rooms" in e for e in errors)
 
     def test_invalid_daily_rate_nan(self):
         errors = validate_bookings(_bookings(daily_rate=["N/A"]))
         assert any("invalid or non-positive daily_rate" in e for e in errors)
+
+    def test_nights_must_match_checkin_checkout_dates(self):
+        errors = validate_bookings(_bookings(nights=[1]))
+        assert any("nights inconsistent" in e for e in errors)
+
+    def test_invalid_status_rejected(self):
+        errors = validate_bookings(_bookings(status=["tentative_unknown"]))
+        assert any("unsupported status" in e for e in errors)
+
+    def test_negative_revenue_rejected(self):
+        errors = validate_bookings(_bookings(net_room_revenue=[-1.0]))
+        assert any("negative net_room_revenue" in e for e in errors)
 
     def test_checkout_before_checkin(self):
         df = _bookings()
@@ -92,11 +108,23 @@ class TestValidateInventory:
 
     def test_nan_available_rooms(self):
         errors = validate_inventory(_inventory(available_rooms=[None]))
-        assert any("non-numeric available_rooms" in e for e in errors)
+        assert any("invalid available_rooms" in e for e in errors)
 
     def test_negative_available_rooms(self):
         errors = validate_inventory(_inventory(available_rooms=[-1]))
         assert any("negative available_rooms" in e for e in errors)
+
+    def test_invalid_out_of_order_rooms(self):
+        errors = validate_inventory(_inventory(out_of_order_rooms=["bad"]))
+        assert any("invalid out_of_order_rooms" in e for e in errors)
+
+    def test_negative_out_of_order_rooms(self):
+        errors = validate_inventory(_inventory(out_of_order_rooms=[-1]))
+        assert any("negative out_of_order_rooms" in e for e in errors)
+
+    def test_out_of_order_cannot_exceed_available(self):
+        errors = validate_inventory(_inventory(available_rooms=[3], out_of_order_rooms=[4]))
+        assert any("out_of_order_rooms greater than available_rooms" in e for e in errors)
 
     def test_duplicate_rows(self):
         inv = pd.concat([_inventory(), _inventory()], ignore_index=True)
@@ -119,6 +147,11 @@ class TestValidateCurrentPrices:
     def test_negative_price(self):
         errors = validate_current_prices(_prices(current_price=[-10.0]))
         assert any("invalid or non-positive current_price" in e for e in errors)
+
+    def test_duplicate_price_rows(self):
+        prices = pd.concat([_prices(), _prices()], ignore_index=True)
+        errors = validate_current_prices(prices)
+        assert any("duplicate" in e for e in errors)
 
 
 class TestCrossTableConsistency:
@@ -150,6 +183,16 @@ class TestCrossTableConsistency:
         errors = validate_cross_table_consistency(bk, inv, _prices())
         assert any("exceeding available inventory" in e for e in errors)
 
+    def test_overbooking_uses_sellable_rooms_after_out_of_order(self):
+        bk = _bookings(
+            nights=[1],
+            rooms=[5],
+            check_out_date=pd.to_datetime(["2024-02-02"]),
+        )
+        inv = _inventory(available_rooms=[10], out_of_order_rooms=[6])
+        errors = validate_cross_table_consistency(bk, inv, _prices())
+        assert any("exceeding available inventory" in e for e in errors)
+
     def test_no_overbooking_within_limits(self):
         # 1-night booking: rooms=5 ≤ available=10, no overbooking.
         bk = _bookings(
@@ -164,3 +207,19 @@ class TestCrossTableConsistency:
         bk = _bookings(room_type=["Suite"])
         errors = validate_cross_table_consistency(bk, _inventory(), _prices())
         assert any("hotel+room_type combination" in e for e in errors)
+
+    def test_current_price_date_requires_matching_inventory(self):
+        prices = _prices(stay_date=pd.to_datetime(["2024-02-02"]))
+        errors = validate_cross_table_consistency(_bookings(), _inventory(), prices)
+        assert any("current_price date row" in e for e in errors)
+
+    def test_historical_inventory_does_not_require_matching_price(self):
+        inv = pd.concat(
+            [
+                _inventory(stay_date=pd.to_datetime(["2024-01-01"])),
+                _inventory(stay_date=pd.to_datetime(["2024-02-01"])),
+            ],
+            ignore_index=True,
+        )
+        errors = validate_cross_table_consistency(_bookings(nights=[1], check_out_date=pd.to_datetime(["2024-02-02"])), inv, _prices())
+        assert not any("current_price date row" in e for e in errors)
