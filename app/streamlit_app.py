@@ -940,7 +940,11 @@ def _styled_recommendations(df: pd.DataFrame, localized: pd.DataFrame, ui_theme:
 
         if not background and border == "transparent":
             return [""] * len(row)
-        return [f"background-color: {background}; border-left: 4px solid {border};"] * len(row)
+        parts = []
+        if background:
+            parts.append(f"background-color: {background}")
+        parts.append(f"box-shadow: inset 4px 0 0 0 {border}")
+        return ["; ".join(parts) + ";"] * len(row)
 
     return localized.style.apply(style_row, axis=1)
 
@@ -1111,26 +1115,24 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
             },
         )
         
-        # 添加立体感：渐变效果和阴影
         action_fig.update_traces(
+            textposition="outside",
+            cliponaxis=False,
             marker=dict(
                 line=dict(
                     width=2,
                     color="rgba(255, 255, 255, 0.3)" if ui_theme == "dark" else "rgba(0, 0, 0, 0.1)"
                 ),
-                # 添加柱子顶部的高光效果
-                pattern=dict(shape=""),
             ),
-            textfont=dict(size=14, color="#FFFFFF" if ui_theme == "dark" else "#0F172A"),
+            textfont=dict(size=13, color="#94A3B8" if ui_theme == "dark" else "#334155"),
         )
-        
+
         action_fig.update_layout(
             xaxis_title=t("column_action", lang),
             yaxis_title=t("chart_count", lang),
             showlegend=False,
-            # 添加整体立体感
-            bargap=0.15,
-            bargroupgap=0.1,
+            bargap=0.2,
+            yaxis=dict(autorange=True),
         )
         
         st.plotly_chart(
@@ -1197,7 +1199,7 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         priority = priority.sort_values(["_risk_score", "_confidence_score", "_revenue_abs"], ascending=False).drop(
             columns=["_risk_score", "_confidence_score", "_revenue_abs"]
         )
-        _show_recommendation_table(priority.head(10), lang, ui_theme)
+        _show_recommendation_table(priority, lang, ui_theme)
 
 
 def render_recommendations(recommendations: pd.DataFrame, lang: str, ui_theme: str) -> None:

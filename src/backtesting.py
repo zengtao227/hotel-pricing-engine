@@ -52,6 +52,62 @@ BT = {
     "recommended_price_marker": {"zh": "是否推荐价", "en": "Is Recommended Price", "de": "Ist empfohlener Preis", "fr": "Prix recommandé ?"},
     "yes": {"zh": "是", "en": "Yes", "de": "Ja", "fr": "Oui"},
     "no": {"zh": "否", "en": "No", "de": "Nein", "fr": "Non"},
+    "how_to_use_title": {
+        "zh": "📖 如何使用回测功能？",
+        "en": "📖 How to use backtesting?",
+        "de": "📖 Wie nutzt man den Backtest?",
+        "fr": "📖 Comment utiliser le backtest ?",
+    },
+    "how_to_use_body": {
+        "zh": (
+            "**第一步：选择回测观察日**\n"
+            "选一个过去的日期（例如 30–90 天前）作为模拟的「当时视角」。系统仅使用该日之前已产生的订单数据，模拟如果在那天就使用定价引擎会给出什么推荐。\n\n"
+            "**第二步：解读两个收益口径**\n"
+            "- **价格弹性收益回测**（重点指标）：考虑了「降价能拉动多卖多少间房」的弹性效应。若推荐价更高，预期总收益应随之上升；若推荐价更低，弹性模型预测新增售出量会弥补单价损失。\n"
+            "- **静态实际销量对照**（保守校验）：用最终真实售出量乘以推荐价，不计需求弹性。对「下调」建议，该口径必然显示负值——这是设计行为，不代表产品使收益变低。\n\n"
+            "**第三步：查看候选价收益曲线**\n"
+            "下拉选择任意一条房型/日期，查看该日各候选价对应的预期收益曲线，直观看出推荐价处于曲线峰值附近。\n\n"
+            "**如何接入真实酒店数据？**\n"
+            "目前系统使用内置演示数据。接入真实数据需要提供三张表（CSV 或 Excel）：\n"
+            "① 历史订单表（booking_id, hotel_id, room_type, booking_date, check_in_date, rooms, daily_rate, status …）\n"
+            "② 库存表（hotel_id, room_type, stay_date, available_rooms）\n"
+            "③ 当前价格表（hotel_id, room_type, stay_date, current_price）\n"
+            "数据上传/导入功能正在开发中，完成后将在界面内直接上传文件。"
+        ),
+        "en": (
+            "**Step 1: Choose a backtest observation date**\n"
+            "Pick a past date (e.g. 30–90 days ago) as the simulated viewpoint. The system uses only bookings already made by that date to simulate what recommendations the engine would have issued.\n\n"
+            "**Step 2: Read the two revenue sections**\n"
+            "- **Elasticity Revenue Backtest** (primary metric): accounts for the demand elasticity effect — lower prices attract more bookings, higher prices capture more revenue per room. This is the main signal.\n"
+            "- **Static Realized-Volume Comparison** (sanity check): multiplies the final actual sold rooms by the recommended price, ignoring elasticity. For 'decrease' recommendations this will always show a negative delta — that is by design.\n\n"
+            "**Step 3: Inspect candidate price curves**\n"
+            "Use the dropdown to select any room type / date and see how expected revenue changes across candidate prices. The recommended price should sit near the curve peak.\n\n"
+            "**Using real hotel data**\n"
+            "Currently the system uses built-in demo data. To use real data, three tables are required (CSV or Excel):\n"
+            "① Bookings (booking_id, hotel_id, room_type, booking_date, check_in_date, rooms, daily_rate, status …)\n"
+            "② Inventory (hotel_id, room_type, stay_date, available_rooms)\n"
+            "③ Current prices (hotel_id, room_type, stay_date, current_price)\n"
+            "A file-upload UI is under development and will be added to the interface."
+        ),
+        "de": (
+            "**Schritt 1: Beobachtungstag wählen**\n"
+            "Wählen Sie ein vergangenes Datum (z. B. vor 30–90 Tagen) als simulierten Zeitpunkt. Das System verwendet nur Buchungen, die bis zu diesem Tag vorlagen.\n\n"
+            "**Schritt 2: Zwei Umsatzkennzahlen lesen**\n"
+            "- **Umsatz-Backtest mit Preiselastizität** (Hauptindikator): berücksichtigt den Nachfrageeffekt.\n"
+            "- **Statischer Ist-Volumen-Vergleich** (konservativer Check): multipliziert die tatsächlich verkauften Zimmer mit dem empfohlenen Preis ohne Elastizitätsannahme. Für 'Senkungs'-Empfehlungen ergibt sich immer ein negativer Wert – das ist beabsichtigt.\n\n"
+            "**Echte Hoteldaten einbinden**\n"
+            "Derzeit werden Demo-Daten verwendet. Für echte Daten werden drei Tabellen benötigt: Buchungen, Bestand und aktuelle Preise. Eine Upload-Funktion ist in Entwicklung."
+        ),
+        "fr": (
+            "**Étape 1 : Choisir une date d'observation**\n"
+            "Choisissez une date passée (par ex. 30 à 90 jours avant aujourd'hui) comme point de vue simulé. Le système n'utilise que les réservations antérieures à cette date.\n\n"
+            "**Étape 2 : Lire les deux métriques de revenu**\n"
+            "- **Backtest avec élasticité** (indicateur principal) : tient compte de l'effet de la demande.\n"
+            "- **Comparaison statique** (vérification prudente) : utilise le volume réel avec le prix recommandé, sans tenir compte de l'élasticité. Pour les recommandations de baisse, le delta est toujours négatif — c'est voulu.\n\n"
+            "**Données réelles**\n"
+            "Le système utilise des données de démonstration. Trois tables sont nécessaires pour les données réelles : réservations, inventaire et prix actuels. Une interface d'import est en cours de développement."
+        ),
+    },
 }
 
 COLUMN_LABELS = {
@@ -217,11 +273,12 @@ def run_static_backtest(metrics, bookings, current_prices, observation_date, hor
 
 
 _ROUND_2DP = [
+    "current_price", "recommended_price",
     "known_room_revenue", "current_expected_revenue", "recommended_expected_revenue",
     "demand_forecast_at_current_price", "current_expected_sold_rooms", "expected_sold_rooms",
     "expected_new_sold_rooms", "baseline_revenue", "recommended_revenue", "static_revenue_delta",
 ]
-_ROUND_4DP = ["known_occupancy", "realized_occupancy"]
+_PCT_COLS = ["known_occupancy", "realized_occupancy"]
 
 
 def localized_backtest_detail(detail: pd.DataFrame, lang: str) -> pd.DataFrame:
@@ -230,9 +287,9 @@ def localized_backtest_detail(detail: pd.DataFrame, lang: str) -> pd.DataFrame:
     for col in _ROUND_2DP:
         if col in out.columns:
             out[col] = pd.to_numeric(out[col], errors="coerce").round(2)
-    for col in _ROUND_4DP:
+    for col in _PCT_COLS:
         if col in out.columns:
-            out[col] = pd.to_numeric(out[col], errors="coerce").round(4)
+            out[col] = (pd.to_numeric(out[col], errors="coerce") * 100).round(1)
     if "room_type" in out.columns:
         out["room_type"] = out["room_type"].map(lambda v: translate_room_type(v, lang))
     if "action" in out.columns:
@@ -261,7 +318,8 @@ def backtest_excel_bytes(detail: pd.DataFrame, lang: str) -> bytes:
 def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_days, max_change_pct, price_rounding_strategy, room_price_bounds=None, ui_theme: str = "light") -> None:
     st.subheader(bt_label("tab", lang))
     st.write(bt_label("intro", lang))
-    st.info(bt_label("static_volume_note", lang))
+    with st.expander(bt_label("how_to_use_title", lang)):
+        st.markdown(bt_label("how_to_use_body", lang))
 
     dates = sorted(pd.to_datetime(current_prices["stay_date"]).dt.date.unique())
     if not dates:
@@ -316,7 +374,7 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
         yaxis_title=bt_label("axis_revenue_delta", lang),
         legend_title_text=bt_label("legend_revenue_metric", lang),
     )
-    st.plotly_chart(apply_plotly_theme(daily_fig, ui_theme), width="stretch")
+    st.plotly_chart(apply_plotly_theme(daily_fig, ui_theme), use_container_width=True)
 
     st.subheader(bt_label("curve", lang))
     curve_options = detail.copy()
@@ -361,9 +419,10 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
             xaxis_title=bt_label("axis_candidate_price", lang),
             yaxis_title=bt_label("axis_expected_revenue", lang),
         )
-        st.plotly_chart(apply_plotly_theme(curve_fig, ui_theme), width="stretch")
+        st.plotly_chart(apply_plotly_theme(curve_fig, ui_theme), use_container_width=True)
 
     st.subheader(bt_label("static_section", lang))
+    st.caption(bt_label("static_volume_note", lang))
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(bt_label("baseline_revenue", lang), f"{summary['baseline_revenue']:,.0f}")
     c2.metric(bt_label("recommended_revenue", lang), f"{summary['recommended_revenue']:,.0f}")
@@ -371,5 +430,12 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
     c4.metric(bt_label("revenue_delta_pct", lang), f"{summary['revenue_delta_pct']:.1%}")
 
     st.subheader(bt_label("details", lang))
-    st.dataframe(localized_backtest_detail(detail, lang), width="stretch", hide_index=True)
+    localized_detail = localized_backtest_detail(detail, lang)
+    detail_col_config = {
+        _col_label("current_price", lang): st.column_config.NumberColumn(format="%.2f"),
+        _col_label("recommended_price", lang): st.column_config.NumberColumn(format="%.2f"),
+        _col_label("known_occupancy", lang): st.column_config.NumberColumn(format="%.1f%%"),
+        _col_label("realized_occupancy", lang): st.column_config.NumberColumn(format="%.1f%%"),
+    }
+    st.dataframe(localized_detail, use_container_width=True, hide_index=True, column_config=detail_col_config)
     st.download_button(bt_label("download", lang), data=backtest_excel_bytes(detail, lang), file_name="hotel_pricing_backtest.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
