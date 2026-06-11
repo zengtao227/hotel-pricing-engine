@@ -7,6 +7,7 @@ from io import BytesIO
 import pandas as pd
 import streamlit as st
 
+from .audit_log_store import append_audit_log
 from .i18n import t, translate_room_type
 from .ui_theme import status_row_background
 
@@ -241,11 +242,86 @@ def simulate_push(df: pd.DataFrame, lang: str, actor: str = "demo_user") -> tupl
             continue
         out.at[idx, "push_status"] = "pushed"
         out.at[idx, "pushed_at"] = now
-        rows.append({"timestamp": now, "actor": actor, "hotel_id": row["hotel_id"], "room_type": row["room_type"], "stay_date": row["stay_date"], "current_price": row["current_price"], "recommended_price": row["recommended_price"], "approved_price": row["approved_price"], "manual_override": bool(row["manual_override"]), "approval_status": row["approval_status"], "push_status": "pushed", "review_comment": row["review_comment"], "target_system": "SIMULATED_CHANNEL_MANAGER"})
+        rows.append({"timestamp": now, "actor": actor, "event": "push", "hotel_id": row["hotel_id"], "room_type": row["room_type"], "stay_date": row["stay_date"], "current_price": row["current_price"], "recommended_price": row["recommended_price"], "approved_price": row["approved_price"], "manual_override": bool(row["manual_override"]), "approval_status": row["approval_status"], "push_status": "pushed", "review_comment": row["review_comment"], "target_system": "SIMULATED_CHANNEL_MANAGER"})
     return out, pd.DataFrame(rows), bounds_violations
 
 
-def render_approval_cards(recommendations: pd.DataFrame, lang: str) -> None:
+def decision_log_rows(rows: pd.DataFrame, event: str, actor: str) -> pd.DataFrame:
+    """Audit rows for approval decisions (approve / reject / unapprove / override / bulk_accept)."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    out: list[dict] = []
+    for _, row in rows.iterrows():
+        out.append(
+            {
+                "timestamp": now,
+                "actor": actor,
+                "event": event,
+                "hotel_id": row.get("hotel_id", ""),
+                "room_type": row.get("room_type", ""),
+                "stay_date": str(row.get("stay_date", "")),
+                "current_price": row.get("current_price"),
+                "recommended_price": row.get("recommended_price"),
+                "approved_price": row.get("approved_price"),
+                "manual_override": bool(row.get("manual_override", False)),
+                "approval_status": row.get("approval_status", ""),
+                "push_status": row.get("push_status", "not_pushed"),
+                "review_comment": row.get("review_comment", ""),
+                "target_system": "APPROVAL_UI",
+            }
+        )
+    return pd.DataFrame(out)
+
+
+def reset_log_row(actor: str, row_count: int) -> pd.DataFrame:
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return pd.DataFrame(
+        [
+            {
+                "timestamp": now,
+                "actor": actor,
+                "event": "reset",
+                "hotel_id": "",
+                "room_type": "",
+                "stay_date": "",
+                "current_price": None,
+                "recommended_price": None,
+                "approved_price": None,
+                "manual_override": False,
+                "approval_status": "",
+                "push_status": "",
+                "review_comment": f"approval table reset ({row_count} rows)",
+                "target_system": "APPROVAL_UI",
+            }
+        ]
+    )
+
+
+def table_decision_events(before: pd.DataFrame, after: pd.DataFrame) -> list[tuple[str, pd.DataFrame]]:
+    """Diff two equally-indexed approval tables into (event, changed rows) groups."""
+    if len(before) != len(after):
+        return []
+    status_changed = before["approval_status"].astype(str).values != after["approval_status"].astype(str).values
+    price_before = pd.to_numeric(before["approved_price"], errors="coerce").fillna(0).values
+    price_after = pd.to_numeric(after["approved_price"], errors="coerce").fillna(0).values
+    price_changed = abs(price_after - price_before) > 0.01
+
+    events: list[tuple[str, pd.DataFrame]] = []
+    for event, mask in [
+        ("approve", status_changed & (after["approval_status"] == "approved").values),
+        ("reject", status_changed & (after["approval_status"] == "rejected").values),
+        ("unapprove", status_changed & (after["approval_status"] == "pending").values),
+        ("override", price_changed & ~status_changed),
+    ]:
+        if mask.any():
+            events.append((event, after[mask]))
+    return events
+
+
+def _log_decision(rows: pd.DataFrame, event: str, actor: str, audit_dir) -> None:
+    st.session_state.approval_log = append_audit_log(decision_log_rows(rows, event, actor), audit_dir)
+
+
+def render_approval_cards(recommendations: pd.DataFrame, lang: str, actor: str = "demo_user", audit_dir="data/audit_logs") -> None:
     """Mobile-friendly card view: one expander per price action item."""
     df: pd.DataFrame = st.session_state.approval_table
 
@@ -253,10 +329,14 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str) -> None:
     with col_bulk:
         if st.button(alabel("bulk_accept", lang), key="card_bulk_accept", width="stretch"):
             st.session_state.approval_table = accept_price_changes(st.session_state.approval_table)
+            changed = st.session_state.approval_table[st.session_state.approval_table["action"] != "hold"]
+            _log_decision(changed, "bulk_accept", actor, audit_dir)
             st.rerun()
     with col_reset:
         if st.button(alabel("reset", lang), key="card_reset", width="stretch"):
+            row_count = len(st.session_state.approval_table)
             st.session_state.approval_table = build_approval_table(recommendations)
+            st.session_state.approval_log = append_audit_log(reset_log_row(actor, row_count), audit_dir)
             st.rerun()
 
     action_df = df[df["action"] != "hold"]
@@ -326,6 +406,7 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str) -> None:
                     tbl.at[idx, "selected"] = True
                     tbl.at[idx, "review_comment"] = new_comment
                     st.session_state.approval_table = update_manual_flags(tbl)
+                    _log_decision(st.session_state.approval_table.loc[[idx]], "approve", actor, audit_dir)
                     st.rerun()
             with b2:
                 if st.button(
@@ -339,6 +420,7 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str) -> None:
                     tbl.at[idx, "selected"] = False
                     tbl.at[idx, "review_comment"] = new_comment
                     st.session_state.approval_table = update_manual_flags(tbl)
+                    _log_decision(st.session_state.approval_table.loc[[idx]], "reject", actor, audit_dir)
                     st.rerun()
 
 

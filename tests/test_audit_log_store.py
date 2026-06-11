@@ -17,6 +17,7 @@ def _log_rows(n: int = 2) -> pd.DataFrame:
             {
                 "timestamp": "2026-06-11 00:00:00 UTC",
                 "actor": "tester",
+                "event": "push",
                 "hotel_id": "H1",
                 "room_type": "Standard Double",
                 "stay_date": f"2026-03-{day:02d}",
