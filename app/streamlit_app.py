@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import sys
 from html import escape
 from pathlib import Path
@@ -27,10 +28,11 @@ from src.approval_workflow import (
     styled_preview,
     table_decision_events,
     to_editor_display,
+    undo_last_push,
     update_manual_flags,
     _card_label,
 )
-from src.audit_log_store import append_audit_log, load_audit_log
+from src.audit_log_store import append_audit_log, load_audit_log, load_approval_draft, save_approval_draft
 from src.backtesting import bt_label, render_backtesting
 from src.channel_pricing_ui import render_channel_price_preview
 from src.data_loader import HotelData, load_demo_data, load_hotel_data
@@ -52,6 +54,23 @@ from src.validation import validate_all
 
 
 st.set_page_config(page_title="Hotel Pricing Engine", layout="wide")
+
+
+def _require_auth() -> None:
+    """Password gate controlled by HOTEL_APP_PASSWORD env var. No-op if unset."""
+    password = os.environ.get("HOTEL_APP_PASSWORD", "")
+    if not password:
+        return
+    if st.session_state.get("_authenticated"):
+        return
+    entered = st.text_input("Password", type="password", key="_auth_input")
+    if st.button("Login"):
+        if entered == password:
+            st.session_state._authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+    st.stop()
 
 
 THEME_LABELS = {
@@ -1305,7 +1324,8 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
 
     signature = approval_signature(recommendations)
     if st.session_state.get("approval_signature") != signature or "approval_table" not in st.session_state:
-        st.session_state.approval_table = build_approval_table(recommendations)
+        draft = load_approval_draft(signature, AUDIT_LOG_DIR)
+        st.session_state.approval_table = draft if draft is not None else build_approval_table(recommendations)
         st.session_state.approval_signature = signature
 
     actor_value = st.text_input(
@@ -1367,21 +1387,33 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     st.dataframe(styled_preview(st.session_state.approval_table, lang), use_container_width=True, hide_index=True)
     render_channel_price_preview(st.session_state.approval_table, lang)
 
-    if st.button(alabel("simulate_push", lang), type="primary", use_container_width=True):
-        pushed_table, log_rows, bounds_violations = simulate_push(
-            st.session_state.approval_table, lang, actor=actor
-        )
-        st.session_state.approval_table = pushed_table
-        if bounds_violations > 0:
-            st.warning(
-                f"{'价格边界拦截' if lang == 'zh' else 'Bounds violation blocked'}: "
-                f"{bounds_violations} {'条记录的批准价超出房型价格上下限，未推送。' if lang == 'zh' else 'rows blocked — approved price outside configured floor/ceiling.'}"
+    push_col, undo_col = st.columns([0.7, 0.3])
+    with push_col:
+        if st.button(alabel("simulate_push", lang), type="primary", use_container_width=True):
+            pushed_table, log_rows, bounds_violations = simulate_push(
+                st.session_state.approval_table, lang, actor=actor
             )
-        if log_rows.empty:
-            st.info(alabel("no_rows", lang))
-        else:
-            st.session_state.approval_log = append_audit_log(log_rows, AUDIT_LOG_DIR)
-            st.success(f"{alabel('push_success', lang)}: {len(log_rows)}")
+            st.session_state.approval_table = pushed_table
+            if bounds_violations > 0:
+                st.warning(
+                    f"{'价格边界拦截' if lang == 'zh' else 'Bounds violation blocked'}: "
+                    f"{bounds_violations} {'条记录的批准价超出房型价格上下限，未推送。' if lang == 'zh' else 'rows blocked — approved price outside configured floor/ceiling.'}"
+                )
+            if log_rows.empty:
+                st.info(alabel("no_rows", lang))
+            else:
+                st.session_state.approval_log = append_audit_log(log_rows, AUDIT_LOG_DIR)
+                st.success(f"{alabel('push_success', lang)}: {len(log_rows)}")
+    with undo_col:
+        undo_label = "撤销推送" if lang == "zh" else "Undo Push"
+        if st.button(undo_label, use_container_width=True):
+            undone_table, undone_count = undo_last_push(st.session_state.approval_table, actor, AUDIT_LOG_DIR)
+            st.session_state.approval_table = undone_table
+            if undone_count:
+                st.session_state.approval_log = load_audit_log(AUDIT_LOG_DIR)
+                st.success(f"{'已撤销' if lang == 'zh' else 'Undone'}: {undone_count}")
+            else:
+                st.info("No pushed rows to undo." if lang != "zh" else "没有可撤销的推送记录。")
 
     if st.session_state.approval_log.empty:
         st.info(alabel("audit_empty", lang))
@@ -1405,6 +1437,8 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
+    save_approval_draft(st.session_state.approval_table, signature, AUDIT_LOG_DIR)
+
 
 def render_data_preview(hotel_data, lang: str) -> None:
     st.subheader(t("data_preview", lang))
@@ -1415,6 +1449,8 @@ def render_data_preview(hotel_data, lang: str) -> None:
     with st.expander(t("current_prices", lang), expanded=False):
         st.dataframe(localize_room_type_values(hotel_data.current_prices.head(50), lang), use_container_width=True)
 
+
+_require_auth()
 
 header_left, header_right = st.columns([0.78, 0.22])
 with header_right:

@@ -6,7 +6,7 @@
 - **项目路径**：`/data/projects/hotel-pricing-engine`
 - **访问地址**：`https://hotel.zengsg.dpdns.org`
 - **运行方式**：systemd 服务 `hotel-pricing-engine.service`
-- **认证**：当前未启用 HTTP Basic Auth
+- **认证**：默认无密码；设置 `HOTEL_APP_PASSWORD` 环境变量可启用应用层密码门
 
 ## systemd 服务
 
@@ -83,7 +83,54 @@ hotel.zengsg.dpdns.org {
 sudo systemctl reload caddy
 ```
 
-如未来需要重新启用访问保护，优先评估完整认证方案；短期演示保护可使用 Caddy `basic_auth`，但密码本身不要写进文档或提交到 GitHub。
+### 启用 Basic Auth（可选，演示保护）
+
+**方案一：应用层密码门（推荐）**
+
+在 systemd 服务的 `[Service]` 段添加环境变量，Streamlit 启动时读取：
+
+```ini
+[Service]
+Environment="HOTEL_APP_PASSWORD=你的密码"
+ExecStart=/path/to/.venv/bin/python -m streamlit run app/streamlit_app.py \
+  --server.port 8501 --server.address 127.0.0.1 --server.headless true
+```
+
+修改后：
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart hotel-pricing-engine
+```
+
+未设置 `HOTEL_APP_PASSWORD` 时应用不加密码，直接访问。
+
+**方案二：Caddy basic_auth（网络层保护）**
+
+先生成 bcrypt 哈希（在服务器上执行）：
+```bash
+caddy hash-password --plaintext '你的密码'
+# 输出类似：$2a$14$...（复制备用）
+```
+
+修改 `/etc/caddy/Caddyfile`：
+```
+hotel.zengsg.dpdns.org {
+    basic_auth {
+        # 用户名 admin，哈希值替换为上面生成的结果
+        admin $2a$14$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    }
+    # 转发真实登录用户名给应用，用于审计日志 actor 字段
+    header_up X-Remote-User {http.auth.user.id}
+    reverse_proxy localhost:8501
+}
+```
+
+重载配置：
+```bash
+sudo systemctl reload caddy
+```
+
+> 两种方案可叠加使用（网络层 + 应用层双重保护），也可单独使用任意一种。密码哈希或明文密码均不得写入 Git。
 
 ---
 
@@ -216,7 +263,7 @@ sudo systemctl reload caddy
 
 - Streamlit 只监听 `127.0.0.1:8501`，不直接对外暴露
 - 对外访问统一通过 Caddy（80/443 端口）
-- 当前未启用 Basic Auth；正式产品应补充更完善的认证机制
+- 设置 `HOTEL_APP_PASSWORD` 可启用应用层密码门；也可在 Caddy 层加 `basic_auth`，见上方配置说明
 - 应用由 systemd 托管，VPS 重启后会自动恢复
 - 不要将 `.env` 或包含真实客户数据的文件提交到 GitHub
 

@@ -246,6 +246,30 @@ def simulate_push(df: pd.DataFrame, lang: str, actor: str = "demo_user") -> tupl
     return out, pd.DataFrame(rows), bounds_violations
 
 
+def undo_last_push(
+    df: pd.DataFrame,
+    actor: str,
+    audit_dir: str = "data/audit_logs",
+) -> tuple[pd.DataFrame, int]:
+    """Revert the most recent push batch (rows sharing the latest pushed_at timestamp).
+
+    Appends undo_push audit rows — the original push records are never deleted.
+    Returns (updated_table, number_of_rows_undone).
+    """
+    pushed = df[df["push_status"] == "pushed"]
+    if pushed.empty:
+        return df, 0
+    latest_time = pushed["pushed_at"].max()
+    mask = (df["push_status"] == "pushed") & (df["pushed_at"] == latest_time)
+    count = int(mask.sum())
+    out = df.copy()
+    out.loc[mask, "push_status"] = "not_pushed"
+    out.loc[mask, "pushed_at"] = ""
+    undo_rows = decision_log_rows(out[mask], "undo_push", actor)
+    append_audit_log(undo_rows, audit_dir)
+    return out, count
+
+
 def decision_log_rows(rows: pd.DataFrame, event: str, actor: str) -> pd.DataFrame:
     """Audit rows for approval decisions (approve / reject / unapprove / override / bulk_accept)."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")

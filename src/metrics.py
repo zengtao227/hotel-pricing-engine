@@ -18,36 +18,45 @@ ROOM_NIGHT_COLUMNS = [
 
 
 def expand_bookings_to_room_nights(bookings: pd.DataFrame) -> pd.DataFrame:
-    """Expand booking-level data into one row per stay date."""
-    rows = []
-    for row in bookings.itertuples(index=False):
-        nights = int(getattr(row, "nights", 1) or 1)
-        rooms = int(getattr(row, "rooms", 1) or 1)
-        status = str(getattr(row, "status", "")).lower()
-        active = status in ACTIVE_STATUSES
-        daily_rate = float(getattr(row, "daily_rate", 0) or 0)
-        nights_divisor = max(nights, 1)
-        gross_per_night = float(getattr(row, "gross_room_revenue", daily_rate * rooms * nights) or 0.0) / nights_divisor
-        net_per_night = float(getattr(row, "net_room_revenue", daily_rate * rooms * nights) or 0.0) / nights_divisor
+    """Expand booking-level data into one row per stay date (vectorized)."""
+    if bookings.empty:
+        return pd.DataFrame(columns=ROOM_NIGHT_COLUMNS)
 
-        for offset in range(nights):
-            stay_date = pd.to_datetime(getattr(row, "check_in_date")) + pd.Timedelta(days=offset)
-            rows.append(
-                {
-                    "booking_id": getattr(row, "booking_id"),
-                    "hotel_id": getattr(row, "hotel_id"),
-                    "room_type": getattr(row, "room_type"),
-                    "booking_date": pd.to_datetime(getattr(row, "booking_date")),
-                    "stay_date": stay_date.normalize(),
-                    "rooms": rooms if active else 0,
-                    "gross_room_revenue": gross_per_night if active else 0.0,
-                    "net_room_revenue": net_per_night if active else 0.0,
-                    "status": status,
-                    "channel": getattr(row, "channel", None),
-                }
-            )
+    b = bookings.copy()
+    b["check_in_date"] = pd.to_datetime(b["check_in_date"])
+    b["booking_date"] = pd.to_datetime(b["booking_date"])
+    b["nights"] = pd.to_numeric(b.get("nights", 1), errors="coerce").fillna(1).clip(lower=1).astype(int)
+    b["rooms"] = pd.to_numeric(b.get("rooms", 1), errors="coerce").fillna(1).astype(int)
+    b["_status"] = b["status"].astype(str).str.lower()
+    b["_active"] = b["_status"].isin(ACTIVE_STATUSES)
 
-    return pd.DataFrame(rows, columns=ROOM_NIGHT_COLUMNS)
+    daily_rate = pd.to_numeric(b.get("daily_rate", 0), errors="coerce").fillna(0)
+    fallback_total = daily_rate * b["rooms"] * b["nights"]
+    gross_total = pd.to_numeric(b.get("gross_room_revenue", fallback_total), errors="coerce").fillna(0)
+    net_total = pd.to_numeric(b.get("net_room_revenue", fallback_total), errors="coerce").fillna(0)
+    b["_gross_per_night"] = gross_total / b["nights"]
+    b["_net_per_night"] = net_total / b["nights"]
+
+    # Repeat each row by its night count, then assign per-night stay dates.
+    rep = b.loc[b.index.repeat(b["nights"])].copy()
+    rep["_offset"] = rep.groupby(level=0).cumcount()
+    rep["stay_date"] = (rep["check_in_date"] + pd.to_timedelta(rep["_offset"], unit="D")).dt.normalize()
+
+    inactive = ~rep["_active"]
+    rep.loc[inactive, "rooms"] = 0
+    rep.loc[inactive, "_gross_per_night"] = 0.0
+    rep.loc[inactive, "_net_per_night"] = 0.0
+
+    rep = rep.drop(columns=["gross_room_revenue", "net_room_revenue"], errors="ignore")
+    rep = rep.rename(columns={
+        "_gross_per_night": "gross_room_revenue",
+        "_net_per_night": "net_room_revenue",
+        "_status": "status",
+    })
+    if "channel" not in rep.columns:
+        rep["channel"] = None
+
+    return rep[ROOM_NIGHT_COLUMNS].reset_index(drop=True)
 
 
 def calculate_daily_metrics(bookings: pd.DataFrame, inventory: pd.DataFrame) -> pd.DataFrame:
@@ -64,7 +73,8 @@ def calculate_daily_metrics(bookings: pd.DataFrame, inventory: pd.DataFrame) -> 
 
     inv = inventory.copy()
     inv["stay_date"] = pd.to_datetime(inv["stay_date"]).dt.normalize()
-    inv["sellable_rooms"] = inv["available_rooms"] - inv.get("out_of_order_rooms", 0)
+    ooo = pd.to_numeric(inv["out_of_order_rooms"], errors="coerce").fillna(0) if "out_of_order_rooms" in inv.columns else 0
+    inv["sellable_rooms"] = pd.to_numeric(inv["available_rooms"], errors="coerce").fillna(0) - ooo
 
     metrics = inv.merge(sold, how="left", on=["hotel_id", "room_type", "stay_date"])
     for column in ["sold_rooms", "room_revenue", "booking_count"]:

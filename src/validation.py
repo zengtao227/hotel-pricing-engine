@@ -106,9 +106,48 @@ def validate_current_prices(current_prices: pd.DataFrame) -> list[str]:
     return errors
 
 
+def validate_cross_table_consistency(
+    bookings: pd.DataFrame,
+    inventory: pd.DataFrame,
+    current_prices: pd.DataFrame,
+) -> list[str]:
+    errors: list[str] = []
+
+    booking_hotels = set(bookings["hotel_id"].dropna().astype(str).unique())
+    inv_hotels = set(inventory["hotel_id"].dropna().astype(str).unique())
+    prices_hotels = set(current_prices["hotel_id"].dropna().astype(str).unique())
+
+    missing_in_inventory = booking_hotels - inv_hotels
+    if missing_in_inventory:
+        errors.append(
+            f"inventory: hotel_id(s) {sorted(missing_in_inventory)} appear in bookings but not in inventory"
+        )
+
+    missing_in_prices = booking_hotels - prices_hotels
+    if missing_in_prices:
+        errors.append(
+            f"current_prices: hotel_id(s) {sorted(missing_in_prices)} appear in bookings but not in current_prices"
+        )
+
+    if not current_prices.empty and not inventory.empty:
+        inv_dates = pd.to_datetime(inventory["stay_date"], errors="coerce").dropna()
+        price_dates = pd.to_datetime(current_prices["stay_date"], errors="coerce").dropna()
+        if not inv_dates.empty and not price_dates.empty:
+            inv_max = inv_dates.max()
+            price_max = price_dates.max()
+            if price_max < inv_max:
+                errors.append(
+                    f"current_prices: max stay_date {price_max.date()} is earlier than "
+                    f"inventory max stay_date {inv_max.date()} — some dates may lack pricing"
+                )
+
+    return errors
+
+
 def validate_all(bookings: pd.DataFrame, inventory: pd.DataFrame, current_prices: pd.DataFrame) -> list[str]:
     return (
         validate_bookings(bookings)
         + validate_inventory(inventory)
         + validate_current_prices(current_prices)
+        + validate_cross_table_consistency(bookings, inventory, current_prices)
     )
