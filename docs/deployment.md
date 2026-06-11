@@ -277,9 +277,101 @@ sudo systemctl reload caddy
 
 ---
 
-## 下一步计划
+## 当前运营策略：公开演示模式
 
-1. 用 Demo 数据完成第一次完整演示验证
-2. 确认是否有真实酒店数据可接入，或继续使用模拟数据
-3. 如需向中国客户演示，评估是否迁移到 Tokyo VPS 或国内服务器
-4. 为长期开放访问补充正式认证机制
+**没有签约客户之前，网站保持公开、无密码**。
+
+理由：
+- 任何潜在客户、合作伙伴、投资人都可以直接访问，不需要提前要账号
+- 演示数据是内置 Demo，没有真实酒店数据泄露风险
+- 降低演示门槛，加快商务推进
+
+`HOTEL_APP_PASSWORD` 保持不设置。代码侧密码门已就位，需要时随时可以开启，不需要修改代码。
+
+---
+
+## 第一个客户上线清单
+
+**签约后，按以下顺序操作，预计半天完成。**
+
+### 第一步：获取数据
+
+- [ ] 向客户索取三张表（bookings、inventory、current_prices），格式参考 `docs/data-requirements.md`
+- [ ] 如果客户 PMS 导出字段名不同，让他们发一份样本，制作字段映射配置，后续导入自动处理
+- [ ] 用系统内置的「上传 CSV」功能验证数据格式，检查校验报错并反馈给客户修正
+
+### 第二步：部署客户专属实例
+
+为客户开一个独立部署，**不要复用当前的公开演示站**。
+独立部署的好处：公开演示站继续开放给其他潜在客户看，客户的真实数据完全隔离。
+
+在 Frankfurt VPS 上新建一个服务实例（以 `grand` 酒店为例）：
+
+```bash
+# 1. 在同一台 VPS 上再克隆一份代码（或 symlink），端口改成 8502
+sudo cp /etc/systemd/system/hotel-pricing-engine.service \
+        /etc/systemd/system/hotel-grand.service
+
+# 2. 编辑新服务，修改端口和密码
+sudo nano /etc/systemd/system/hotel-grand.service
+```
+
+`hotel-grand.service` 关键差异：
+```ini
+[Service]
+WorkingDirectory=/data/projects/hotel-grand        # 或复用同一目录
+Environment=HOTEL_APP_PASSWORD=客户设定的密码
+ExecStart=/usr/bin/python3 -m streamlit run app/streamlit_app.py \
+  --server.port 8502 --server.address 127.0.0.1 --server.headless true
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now hotel-grand
+```
+
+### 第三步：配置 Caddy 子域名
+
+在 Cloudflare 为客户添加一条 A 记录（例如 `grand.zengsg.dpdns.org → 89.168.80.38`），  
+然后在 Caddyfile 添加：
+
+```
+grand.zengsg.dpdns.org {
+    basic_auth {
+        # 用 caddy hash-password 生成哈希，不要把明文密码写进这里
+        admin $2a$14$xxxxxxxxxxxxxxxxxxxxxxxx
+    }
+    header_up X-Remote-User {http.auth.user.id}
+    reverse_proxy localhost:8502
+}
+```
+
+> 推荐 Caddy `basic_auth` + 应用层密码双重保护，前者挡爬虫，后者在 Streamlit 会话层标记身份。
+
+```bash
+sudo systemctl reload caddy
+```
+
+### 第四步：验收检查
+
+- [ ] 用浏览器访问客户专属地址，确认密码门正常弹出
+- [ ] 上传客户真实数据，确认校验通过，各 Tab 数据正确
+- [ ] 公开演示站 `hotel.zengsg.dpdns.org` 仍然可以无密码访问（用 Demo 数据）
+
+### 第五步：告知客户
+
+把以下信息发给客户：
+- 访问地址（客户专属子域名）
+- 登录密码
+- 数据更新方式（手动上传 CSV，或稍后配置 SFTP 自动同步）
+
+---
+
+## 多客户扩展规划
+
+每新增一个客户，重复「第二步 + 第三步」即可：
+- 新服务：`hotel-xxx.service`，端口递增（8502、8503…）
+- 新子域名：`xxx.zengsg.dpdns.org`
+- 新密码：每个客户独立
+
+当客户数量超过 5 个，或客户要求本地部署、国内服务器时，参考 `docs/roadmap.md` Phase 5A/5B 的方案升级为数据库隔离的多租户架构。
