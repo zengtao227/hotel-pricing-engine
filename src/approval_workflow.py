@@ -241,6 +241,7 @@ def simulate_push(df: pd.DataFrame, lang: str, actor: str = "demo_user") -> tupl
         ceiling = row["price_ceiling"] if has_ceiling else None
         if not _price_within_bounds(row["approved_price"], floor, ceiling):
             bounds_violations += 1
+            rows.append({"timestamp": now, "actor": actor, "event": "push_blocked", "hotel_id": row["hotel_id"], "room_type": row["room_type"], "stay_date": row["stay_date"], "current_price": row["current_price"], "recommended_price": row["recommended_price"], "approved_price": row["approved_price"], "manual_override": bool(row["manual_override"]), "approval_status": row["approval_status"], "push_status": "not_pushed", "review_comment": row["review_comment"], "target_system": "SIMULATED_CHANNEL_MANAGER"})
             continue
         out.at[idx, "push_status"] = "pushed"
         out.at[idx, "pushed_at"] = now

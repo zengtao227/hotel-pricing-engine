@@ -93,6 +93,8 @@ def generate_recommendations(
     end_date = observation_date + pd.Timedelta(days=horizon_days)
 
     future_prices = prices[(prices["stay_date"] >= observation_date) & (prices["stay_date"] <= end_date)].copy()
+    if future_prices.empty:
+        return pd.DataFrame(columns=RECOMMENDATION_COLUMNS)
 
     m = metrics.copy()
     m["stay_date"] = pd.to_datetime(m["stay_date"]).dt.normalize()

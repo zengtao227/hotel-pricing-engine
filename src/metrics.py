@@ -62,12 +62,13 @@ def expand_bookings_to_room_nights(bookings: pd.DataFrame) -> pd.DataFrame:
 def calculate_daily_metrics(bookings: pd.DataFrame, inventory: pd.DataFrame) -> pd.DataFrame:
     room_nights = expand_bookings_to_room_nights(bookings)
 
+    room_nights["_active_booking_id"] = room_nights["booking_id"].where(room_nights["rooms"] > 0)
     sold = (
         room_nights.groupby(["hotel_id", "room_type", "stay_date"], as_index=False)
         .agg(
             sold_rooms=("rooms", "sum"),
             room_revenue=("net_room_revenue", "sum"),
-            booking_count=("booking_id", "nunique"),
+            booking_count=("_active_booking_id", "nunique"),
         )
     )
 
@@ -109,11 +110,18 @@ def calculate_pickup(bookings: pd.DataFrame, observation_date=None) -> pd.DataFr
 
     def window(days: int) -> pd.DataFrame:
         mask = active & future & (b["booking_date"] > observation_date - pd.Timedelta(days=days)) & (b["booking_date"] <= observation_date)
+        windowed = b.loc[mask].copy()
+        if windowed.empty:
+            return pd.DataFrame(columns=["hotel_id", "room_type", "stay_date", f"pickup_{days}d"])
+        # Expand each booking to all stay nights so multi-night bookings contribute
+        # pickup credit to every night they occupy, not just check-in date.
+        windowed["nights"] = pd.to_numeric(windowed.get("nights", 1), errors="coerce").fillna(1).clip(lower=1, upper=365).astype(int)
+        rep = windowed.loc[windowed.index.repeat(windowed["nights"])].copy()
+        rep["_offset"] = rep.groupby(level=0).cumcount()
+        rep["stay_date"] = (rep["check_in_date"] + pd.to_timedelta(rep["_offset"], unit="D")).dt.normalize()
         return (
-            b.loc[mask]
-            .groupby(["hotel_id", "room_type", "check_in_date"], as_index=False)
+            rep.groupby(["hotel_id", "room_type", "stay_date"], as_index=False)
             .agg(**{f"pickup_{days}d": ("rooms", "sum")})
-            .rename(columns={"check_in_date": "stay_date"})
         )
 
     pickup = window(7).merge(window(14), how="outer", on=["hotel_id", "room_type", "stay_date"])

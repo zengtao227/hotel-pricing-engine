@@ -166,10 +166,15 @@ def validate_cross_table_consistency(
         active = bookings[bookings["status"].astype(str).str.lower().isin(_ACTIVE)].copy()
         if not active.empty:
             active["check_in_date"] = pd.to_datetime(active["check_in_date"], errors="coerce")
+            # Expand to stay nights so a 3-night booking counts against all 3 nights,
+            # not just check-in date (which would miss overbooking on nights 2+).
+            active["nights"] = pd.to_numeric(active.get("nights", 1), errors="coerce").fillna(1).clip(lower=1, upper=365).astype(int)
+            rep = active.loc[active.index.repeat(active["nights"])].copy()
+            rep["_offset"] = rep.groupby(level=0).cumcount()
+            rep["stay_date"] = (rep["check_in_date"] + pd.to_timedelta(rep["_offset"], unit="D")).dt.normalize()
             booked_per_date = (
-                active.groupby(["hotel_id", "room_type", "check_in_date"], as_index=False)["rooms"]
+                rep.groupby(["hotel_id", "room_type", "stay_date"], as_index=False)["rooms"]
                 .sum()
-                .rename(columns={"check_in_date": "stay_date"})
             )
             inv_avail = inventory.copy()
             inv_avail["stay_date"] = pd.to_datetime(inv_avail["stay_date"], errors="coerce")

@@ -107,5 +107,7 @@ def test_simulate_push_blocks_out_of_bounds_and_zero_prices():
     pushed, log_rows, violations = simulate_push(table, "zh")
 
     assert violations == 2
-    assert log_rows.empty
+    # push_blocked rows are now included in log_rows for audit trail
+    assert len(log_rows) == 2
+    assert (log_rows["event"] == "push_blocked").all()
     assert (pushed["push_status"] != "pushed").all()

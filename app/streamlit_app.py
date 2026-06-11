@@ -1,6 +1,9 @@
 from __future__ import annotations
+import json
 import os
+import secrets
 import sys
+import time
 from html import escape
 from pathlib import Path
 
@@ -53,6 +56,40 @@ from src.ui_theme import apply_plotly_theme, status_row_background, status_row_b
 from src.validation import validate_all
 
 
+@st.cache_data(ttl=300)
+def _cached_load_demo_data(base_dir: str) -> HotelData:
+    return load_demo_data(base_dir)
+
+
+@st.cache_data(ttl=300)
+def _cached_calculate_daily_metrics(bookings: pd.DataFrame, inventory: pd.DataFrame) -> pd.DataFrame:
+    return calculate_daily_metrics(bookings, inventory)
+
+
+@st.cache_data(ttl=300)
+def _cached_generate_recommendations(
+    metrics: pd.DataFrame,
+    bookings: pd.DataFrame,
+    current_prices: pd.DataFrame,
+    observation_date,
+    horizon_days: int,
+    max_change_pct: float,
+    price_rounding_strategy: str,
+    room_price_bounds_json: str,
+) -> pd.DataFrame:
+    room_price_bounds = json.loads(room_price_bounds_json) if room_price_bounds_json else None
+    return generate_recommendations(
+        metrics=metrics,
+        bookings=bookings,
+        current_prices=current_prices,
+        observation_date=observation_date,
+        horizon_days=horizon_days,
+        max_change_pct=max_change_pct,
+        price_rounding_strategy=price_rounding_strategy,
+        room_price_bounds=room_price_bounds,
+    )
+
+
 st.set_page_config(page_title="Hotel Pricing Engine", layout="wide")
 
 
@@ -63,13 +100,31 @@ def _require_auth() -> None:
         return
     if st.session_state.get("_authenticated"):
         return
+
+    if "_auth_failures" not in st.session_state:
+        st.session_state._auth_failures = 0
+        st.session_state._auth_locked_until = 0.0
+
+    now = time.time()
+    if now < st.session_state._auth_locked_until:
+        wait = int(st.session_state._auth_locked_until - now) + 1
+        st.error(f"Too many failed attempts. Try again in {wait}s.")
+        st.stop()
+
     entered = st.text_input("Password", type="password", key="_auth_input")
     if st.button("Login"):
-        if entered == password:
+        if secrets.compare_digest(entered.encode(), password.encode()):
             st.session_state._authenticated = True
+            st.session_state._auth_failures = 0
             st.rerun()
         else:
-            st.error("Incorrect password.")
+            st.session_state._auth_failures += 1
+            if st.session_state._auth_failures >= 5:
+                st.session_state._auth_locked_until = time.time() + 60
+                st.error("Too many failed attempts. Locked for 60 seconds.")
+            else:
+                remaining = 5 - st.session_state._auth_failures
+                st.error(f"Incorrect password. {remaining} attempt(s) remaining before lockout.")
     st.stop()
 
 
@@ -1388,6 +1443,21 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     render_channel_price_preview(st.session_state.approval_table, lang)
 
     push_col, undo_col = st.columns([0.7, 0.3])
+    _BOUNDS_BLOCKED = {
+        "zh": ("价格边界拦截", "条记录的批准价超出房型价格上下限，未推送。"),
+        "en": ("Bounds violation blocked", "rows blocked — approved price outside configured floor/ceiling."),
+        "de": ("Preisgrenze blockiert", "Zeilen blockiert — genehmigter Preis außerhalb konfigurierter Grenzen."),
+        "fr": ("Limite de prix dépassée", "lignes bloquées — prix validé hors des limites configurées."),
+    }
+    _UNDO_LABELS = {
+        "zh": ("撤销推送", "已撤销", "没有可撤销的推送记录。"),
+        "en": ("Undo Push", "Undone", "No pushed rows to undo."),
+        "de": ("Veröffentlichung zurücksetzen", "Rückgängig gemacht", "Keine veröffentlichten Zeilen zum Zurücksetzen."),
+        "fr": ("Annuler la publication", "Annulé", "Aucune ligne publiée à annuler."),
+    }
+    _bl = _BOUNDS_BLOCKED.get(lang, _BOUNDS_BLOCKED["en"])
+    _ul = _UNDO_LABELS.get(lang, _UNDO_LABELS["en"])
+
     with push_col:
         if st.button(alabel("simulate_push", lang), type="primary", use_container_width=True):
             pushed_table, log_rows, bounds_violations = simulate_push(
@@ -1395,25 +1465,21 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
             )
             st.session_state.approval_table = pushed_table
             if bounds_violations > 0:
-                st.warning(
-                    f"{'价格边界拦截' if lang == 'zh' else 'Bounds violation blocked'}: "
-                    f"{bounds_violations} {'条记录的批准价超出房型价格上下限，未推送。' if lang == 'zh' else 'rows blocked — approved price outside configured floor/ceiling.'}"
-                )
+                st.warning(f"{_bl[0]}: {bounds_violations} {_bl[1]}")
             if log_rows.empty:
                 st.info(alabel("no_rows", lang))
             else:
                 st.session_state.approval_log = append_audit_log(log_rows, AUDIT_LOG_DIR)
-                st.success(f"{alabel('push_success', lang)}: {len(log_rows)}")
+                st.success(f"{alabel('push_success', lang)}: {len(log_rows[log_rows['event'] == 'push'])}")
     with undo_col:
-        undo_label = "撤销推送" if lang == "zh" else "Undo Push"
-        if st.button(undo_label, use_container_width=True):
+        if st.button(_ul[0], use_container_width=True):
             undone_table, undone_count = undo_last_push(st.session_state.approval_table, actor, AUDIT_LOG_DIR)
             st.session_state.approval_table = undone_table
             if undone_count:
                 st.session_state.approval_log = load_audit_log(AUDIT_LOG_DIR)
-                st.success(f"{'已撤销' if lang == 'zh' else 'Undone'}: {undone_count}")
+                st.success(f"{_ul[1]}: {undone_count}")
             else:
-                st.info("No pushed rows to undo." if lang != "zh" else "没有可撤销的推送记录。")
+                st.info(_ul[2])
 
     if st.session_state.approval_log.empty:
         st.info(alabel("audit_empty", lang))
@@ -1437,7 +1503,10 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
-    save_approval_draft(st.session_state.approval_table, signature, AUDIT_LOG_DIR)
+    table_hash = int(pd.util.hash_pandas_object(st.session_state.approval_table).sum())
+    if st.session_state.get("_draft_hash") != table_hash:
+        save_approval_draft(st.session_state.approval_table, signature, AUDIT_LOG_DIR)
+        st.session_state._draft_hash = table_hash
 
 
 def render_data_preview(hotel_data, lang: str) -> None:
@@ -1506,7 +1575,7 @@ with st.sidebar:
 
 try:
     if use_demo:
-        hotel_data = load_demo_data(ROOT / "sample_data")
+        hotel_data = _cached_load_demo_data(str(ROOT / "sample_data"))
     else:
         if not bookings_file or not inventory_file or not current_prices_file:
             st.info(t("upload_hint", lang))
@@ -1542,10 +1611,10 @@ bookings_as_of = hotel_data.bookings[
     pd.to_datetime(hotel_data.bookings["booking_date"]).dt.normalize()
     <= pd.to_datetime(observation_date).normalize()
 ].copy()
-metrics = calculate_daily_metrics(bookings_as_of, hotel_data.inventory)
+metrics = _cached_calculate_daily_metrics(bookings_as_of, hotel_data.inventory)
 room_price_bounds = room_bounds_from_config(hotel_config)
 
-recommendations = generate_recommendations(
+recommendations = _cached_generate_recommendations(
     metrics=metrics,
     bookings=bookings_as_of,
     current_prices=hotel_data.current_prices,
@@ -1553,7 +1622,7 @@ recommendations = generate_recommendations(
     horizon_days=horizon_days,
     max_change_pct=max_change_pct,
     price_rounding_strategy=price_rounding_strategy,
-    room_price_bounds=room_price_bounds,
+    room_price_bounds_json=json.dumps(room_price_bounds, sort_keys=True) if room_price_bounds else "",
 )
 missing_recommendation_rows = _expected_recommendation_rows(hotel_data.current_prices, observation_date, horizon_days) - len(recommendations)
 if missing_recommendation_rows > 0:

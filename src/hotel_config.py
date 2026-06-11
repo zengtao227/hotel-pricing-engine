@@ -71,6 +71,8 @@ def ensure_hotel_config() -> dict[str, Any]:
 
 
 def room_config_map(config: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    # Keyed by room_type only — if multiple hotels share the same room_type name, the last
+    # one wins. For multi-hotel deployments each hotel should have its own config instance.
     return {room["room_type"]: room for room in config.get("room_types", []) if room.get("enabled", True)}
 
 
@@ -130,6 +132,7 @@ def apply_config_to_current_prices(current_prices: pd.DataFrame, config: dict[st
 
 
 def room_bounds_from_config(config: dict[str, Any]) -> dict[str, dict[str, float]]:
+    # Keyed by room_type only — same multi-hotel limitation as room_config_map.
     return {room["room_type"]: {"min_price": float(room.get("min_price", 0) or 0), "max_price": float(room.get("max_price", 0) or 0), "base_price": float(room.get("base_price", 0) or 0)} for room in config.get("room_types", []) if room.get("enabled", True)}
 
 
