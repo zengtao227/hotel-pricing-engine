@@ -458,7 +458,7 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
         yaxis_title=bt_label("axis_revenue_delta", lang),
         legend_title_text=bt_label("legend_revenue_metric", lang),
     )
-    st.plotly_chart(apply_plotly_theme(daily_fig, ui_theme), use_container_width=True)
+    st.plotly_chart(apply_plotly_theme(daily_fig, ui_theme), width="stretch")
 
     st.subheader(bt_label("curve", lang))
     curve_options = detail.copy()
@@ -503,7 +503,7 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
             xaxis_title=bt_label("axis_candidate_price", lang),
             yaxis_title=bt_label("axis_expected_revenue", lang),
         )
-        st.plotly_chart(apply_plotly_theme(curve_fig, ui_theme), use_container_width=True)
+        st.plotly_chart(apply_plotly_theme(curve_fig, ui_theme), width="stretch")
 
     st.subheader(bt_label("observed_section", lang))
     st.caption(bt_label("observed_intro", lang))
@@ -535,7 +535,7 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
             xaxis_title=bt_label("axis_observed_elasticity", lang),
             yaxis_title=bt_label("axis_pair_count", lang),
         )
-        st.plotly_chart(apply_plotly_theme(observed_fig, ui_theme), use_container_width=True)
+        st.plotly_chart(apply_plotly_theme(observed_fig, ui_theme), width="stretch")
 
     st.subheader(bt_label("static_section", lang))
     st.caption(bt_label("static_volume_note", lang))
@@ -553,5 +553,5 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
         _col_label("known_occupancy", lang): st.column_config.NumberColumn(format="%.1f%%"),
         _col_label("realized_occupancy", lang): st.column_config.NumberColumn(format="%.1f%%"),
     }
-    st.dataframe(localized_detail, use_container_width=True, hide_index=True, column_config=detail_col_config)
+    st.dataframe(localized_detail, width="stretch", hide_index=True, column_config=detail_col_config)
     st.download_button(bt_label("download", lang), data=backtest_excel_bytes(detail, lang), file_name="hotel_pricing_backtest.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

@@ -112,16 +112,17 @@ caddy hash-password --plaintext '你的密码'
 # 输出类似：$2a$14$...（复制备用）
 ```
 
-修改 `/etc/caddy/Caddyfile`：
+修改 `/etc/caddy/Caddyfile`（注意 `header_up` 必须写在 `reverse_proxy` 块内部）：
 ```
 hotel.zengsg.dpdns.org {
     basic_auth {
         # 用户名 admin，哈希值替换为上面生成的结果
         admin $2a$14$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     }
-    # 转发真实登录用户名给应用，用于审计日志 actor 字段
-    header_up X-Remote-User {http.auth.user.id}
-    reverse_proxy localhost:8501
+    reverse_proxy localhost:8501 {
+        # 转发真实登录用户名给应用，用于审计日志 actor 字段
+        header_up X-Remote-User {http.auth.user.id}
+    }
 }
 ```
 
@@ -131,6 +132,16 @@ sudo systemctl reload caddy
 ```
 
 > 两种方案可叠加使用（网络层 + 应用层双重保护），也可单独使用任意一种。密码哈希或明文密码均不得写入 Git。
+
+> **安全要点（公开演示模式必读）**：应用信任 `X-Remote-User` 头作为审计日志操作人。
+> 未启用 basic_auth 时，必须在 `reverse_proxy` 块内显式清除访客自带的该头，
+> 否则任何访客都可以伪造操作人身份：
+> ```
+> reverse_proxy localhost:8501 {
+>     header_up -X-Remote-User
+> }
+> ```
+> （Frankfurt VPS 当前演示站已应用此配置。）
 
 ---
 
@@ -344,8 +355,9 @@ grand.zengsg.dpdns.org {
         # 用 caddy hash-password 生成哈希，不要把明文密码写进这里
         admin $2a$14$xxxxxxxxxxxxxxxxxxxxxxxx
     }
-    header_up X-Remote-User {http.auth.user.id}
-    reverse_proxy localhost:8502
+    reverse_proxy localhost:8502 {
+        header_up X-Remote-User {http.auth.user.id}
+    }
 }
 ```
 

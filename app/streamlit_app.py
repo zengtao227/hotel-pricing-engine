@@ -3,9 +3,11 @@ import json
 import os
 import secrets
 import sys
+import threading
 import time
 from hashlib import sha256
 from html import escape
+from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
@@ -63,8 +65,19 @@ def _cached_load_demo_data(base_dir: str) -> HotelData:
 
 
 @st.cache_data(ttl=300)
+def _cached_load_uploaded_data(bookings_bytes: bytes, inventory_bytes: bytes, prices_bytes: bytes) -> HotelData:
+    # Keyed by file content so re-runs from widget interactions reuse the parse.
+    return load_hotel_data(BytesIO(bookings_bytes), BytesIO(inventory_bytes), BytesIO(prices_bytes))
+
+
+@st.cache_data(ttl=300)
 def _cached_calculate_daily_metrics(bookings: pd.DataFrame, inventory: pd.DataFrame) -> pd.DataFrame:
     return calculate_daily_metrics(bookings, inventory)
+
+
+@st.cache_data(ttl=300)
+def _cached_validate_all(bookings: pd.DataFrame, inventory: pd.DataFrame, current_prices: pd.DataFrame) -> list[str]:
+    return validate_all(bookings, inventory, current_prices)
 
 
 @st.cache_data(ttl=300)
@@ -91,7 +104,12 @@ def _cached_generate_recommendations(
     )
 
 
-st.set_page_config(page_title="Hotel Pricing Engine", layout="wide")
+st.set_page_config(
+    page_title="Hotel Pricing Engine",
+    page_icon="🏨",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 
 def _request_host() -> str:
@@ -111,6 +129,48 @@ def _allow_unauthenticated_demo() -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+# Module-level failure tracker shared by all sessions of this process, so an
+# attacker cannot reset the counter by simply opening a new browser session.
+_AUTH_FAILURES: dict[str, tuple[int, float]] = {}
+_AUTH_LOCK = threading.Lock()
+_AUTH_MAX_ATTEMPTS = 5
+_AUTH_LOCKOUT_SECONDS = 60.0
+
+
+def _client_key() -> str:
+    try:
+        ip = st.context.ip_address
+        if ip:
+            return str(ip)
+    except Exception:
+        pass
+    return "unknown"
+
+
+def _auth_locked_remaining(key: str) -> int:
+    with _AUTH_LOCK:
+        failures, locked_until = _AUTH_FAILURES.get(key, (0, 0.0))
+        remaining = locked_until - time.time()
+    return max(0, int(remaining) + 1) if remaining > 0 else 0
+
+
+def _record_auth_failure(key: str) -> int:
+    """Register one failed attempt; returns attempts left before lockout."""
+    with _AUTH_LOCK:
+        failures, _ = _AUTH_FAILURES.get(key, (0, 0.0))
+        failures += 1
+        locked_until = time.time() + _AUTH_LOCKOUT_SECONDS if failures >= _AUTH_MAX_ATTEMPTS else 0.0
+        if failures >= _AUTH_MAX_ATTEMPTS:
+            failures = 0
+        _AUTH_FAILURES[key] = (failures, locked_until)
+    return _AUTH_MAX_ATTEMPTS - failures if not locked_until else 0
+
+
+def _clear_auth_failures(key: str) -> None:
+    with _AUTH_LOCK:
+        _AUTH_FAILURES.pop(key, None)
+
+
 def _require_auth() -> None:
     """Password gate controlled by HOTEL_APP_PASSWORD env var.
 
@@ -126,30 +186,35 @@ def _require_auth() -> None:
     if st.session_state.get("_authenticated"):
         return
 
-    if "_auth_failures" not in st.session_state:
-        st.session_state._auth_failures = 0
-        st.session_state._auth_locked_until = 0.0
+    _, center, _ = st.columns([1, 1.2, 1])
+    with center:
+        st.markdown(
+            '<div style="text-align:center; padding: 2.5rem 0 0.5rem;">'
+            '<div style="font-size:2.6rem;">🏨</div>'
+            '<h2 style="margin:0.2rem 0 0.1rem;">Hotel Pricing Engine</h2>'
+            '<p style="color:#64748B; margin:0 0 1rem;">请输入访问密码 · Please enter the access password</p>'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        client = _client_key()
+        wait = _auth_locked_remaining(client)
+        if wait:
+            st.error(f"Too many failed attempts. Try again in {wait}s.")
+            st.stop()
 
-    now = time.time()
-    if now < st.session_state._auth_locked_until:
-        wait = int(st.session_state._auth_locked_until - now) + 1
-        st.error(f"Too many failed attempts. Try again in {wait}s.")
-        st.stop()
-
-    entered = st.text_input("Password", type="password", key="_auth_input")
-    if st.button("Login"):
-        if secrets.compare_digest(entered.encode(), password.encode()):
-            st.session_state._authenticated = True
-            st.session_state._auth_failures = 0
-            st.rerun()
-        else:
-            st.session_state._auth_failures += 1
-            if st.session_state._auth_failures >= 5:
-                st.session_state._auth_locked_until = time.time() + 60
-                st.error("Too many failed attempts. Locked for 60 seconds.")
+        with st.form("login_form"):
+            entered = st.text_input("Password", type="password", key="_auth_input")
+            submitted = st.form_submit_button("Login", type="primary", width="stretch")
+        if submitted:
+            if secrets.compare_digest(entered.encode(), password.encode()):
+                _clear_auth_failures(client)
+                st.session_state._authenticated = True
+                st.rerun()
+            attempts_left = _record_auth_failure(client)
+            if attempts_left:
+                st.error(f"Incorrect password. {attempts_left} attempt(s) remaining before lockout.")
             else:
-                remaining = 5 - st.session_state._auth_failures
-                st.error(f"Incorrect password. {remaining} attempt(s) remaining before lockout.")
+                st.error(f"Too many failed attempts. Locked for {int(_AUTH_LOCKOUT_SECONDS)} seconds.")
     st.stop()
 
 
@@ -209,6 +274,9 @@ def _inject_mobile_css() -> None:
            Design: Navy #1E3A8A + Royal Blue #1D4ED8
            palette: ui-ux-pro-max Hotel/Hospitality Result 1
            ════════════════════════════════════════════════ */
+
+        /* ── 0. Hide Streamlit deploy button for a clean client-facing demo ── */
+        .stAppDeployButton { display: none !important; }
 
         /* ── 1. Base typography ─────────────────────── */
         html, body, [class*="css"] {
@@ -1073,7 +1141,7 @@ def _show_recommendation_table(df: pd.DataFrame, lang: str, ui_theme: str) -> No
     localized.insert(0, "⚠", risk_series)
     st.dataframe(
         _styled_recommendations(df, localized, ui_theme),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "⚠": st.column_config.TextColumn("⚠", width="small"),
@@ -1259,7 +1327,7 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         
         st.plotly_chart(
             apply_plotly_theme(action_fig, ui_theme),
-            use_container_width=True,
+            width="stretch",
         )
 
     with right:
@@ -1304,7 +1372,7 @@ def render_sales_dashboard(metrics: pd.DataFrame, recommendations: pd.DataFrame,
         )
         st.plotly_chart(
             apply_plotly_theme(trend_fig, ui_theme),
-            use_container_width=True,
+            width="stretch",
         )
 
     st.subheader(t("top_opportunities", lang))
@@ -1440,12 +1508,12 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     else:
         c1, c2 = st.columns([0.35, 0.65])
         with c1:
-            if st.button(alabel("bulk_accept", lang), use_container_width=True):
+            if st.button(alabel("bulk_accept", lang), width="stretch"):
                 st.session_state.approval_table = accept_price_changes(st.session_state.approval_table)
                 changed = st.session_state.approval_table[st.session_state.approval_table["action"] != "hold"]
                 st.session_state.approval_log = append_audit_log(decision_log_rows(changed, "bulk_accept", actor), AUDIT_LOG_DIR)
         with c2:
-            if st.button(alabel("reset", lang), use_container_width=True):
+            if st.button(alabel("reset", lang), width="stretch"):
                 row_count = len(st.session_state.approval_table)
                 st.session_state.approval_table = build_approval_table(recommendations)
                 st.session_state.approval_log = append_audit_log(reset_log_row(actor, row_count), AUDIT_LOG_DIR)
@@ -1454,7 +1522,7 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
         editor_display = to_editor_display(st.session_state.approval_table, lang)
         edited_display = st.data_editor(
             editor_display,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config=editor_column_config(lang),
             disabled=disabled_columns(lang),
@@ -1472,7 +1540,7 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
 
     # Common to both views: full preview, channel prices, push button, audit log
     st.caption(alabel("preview_caption", lang))
-    st.dataframe(styled_preview(st.session_state.approval_table, lang), use_container_width=True, hide_index=True)
+    st.dataframe(styled_preview(st.session_state.approval_table, lang), width="stretch", hide_index=True)
     render_channel_price_preview(st.session_state.approval_table, lang)
 
     push_col, undo_col = st.columns([0.7, 0.3])
@@ -1492,7 +1560,7 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
     _ul = _UNDO_LABELS.get(lang, _UNDO_LABELS["en"])
 
     with push_col:
-        if st.button(alabel("simulate_push", lang), type="primary", use_container_width=True):
+        if st.button(alabel("simulate_push", lang), type="primary", width="stretch"):
             pushed_table, log_rows, bounds_violations = simulate_push(
                 st.session_state.approval_table, lang, actor=actor
             )
@@ -1505,7 +1573,7 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
                 st.session_state.approval_log = append_audit_log(log_rows, AUDIT_LOG_DIR)
                 st.success(f"{alabel('push_success', lang)}: {len(log_rows[log_rows['event'] == 'push'])}")
     with undo_col:
-        if st.button(_ul[0], use_container_width=True):
+        if st.button(_ul[0], width="stretch"):
             undone_table, undone_count = undo_last_push(st.session_state.approval_table, actor, AUDIT_LOG_DIR)
             st.session_state.approval_table = undone_table
             if undone_count:
@@ -1525,7 +1593,7 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
         }
         st.dataframe(
             st.session_state.approval_log, 
-            use_container_width=True, 
+            width="stretch", 
             hide_index=True,
             column_config=audit_log_column_config
         )
@@ -1549,11 +1617,11 @@ def render_price_approval_publishing(recommendations: pd.DataFrame, lang: str) -
 def render_data_preview(hotel_data, lang: str) -> None:
     st.subheader(t("data_preview", lang))
     with st.expander(t("bookings", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.bookings.head(50), lang), use_container_width=True)
+        st.dataframe(localize_room_type_values(hotel_data.bookings.head(50), lang), width="stretch")
     with st.expander(t("inventory", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.inventory.head(50), lang), use_container_width=True)
+        st.dataframe(localize_room_type_values(hotel_data.inventory.head(50), lang), width="stretch")
     with st.expander(t("current_prices", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.current_prices.head(50), lang), use_container_width=True)
+        st.dataframe(localize_room_type_values(hotel_data.current_prices.head(50), lang), width="stretch")
 
 
 _require_auth()
@@ -1617,7 +1685,9 @@ try:
         if not bookings_file or not inventory_file or not current_prices_file:
             st.info(t("upload_hint", lang))
             st.stop()
-        hotel_data = load_hotel_data(bookings_file, inventory_file, current_prices_file)
+        hotel_data = _cached_load_uploaded_data(
+            bookings_file.getvalue(), inventory_file.getvalue(), current_prices_file.getvalue()
+        )
 except Exception as exc:
     st.error(f"{t('load_error', lang)}: {exc}")
     st.stop()
@@ -1633,7 +1703,7 @@ hotel_data = HotelData(
     current_prices=effective_current_prices,
 )
 
-validation_errors = validate_all(hotel_data.bookings, hotel_data.inventory, hotel_data.current_prices)
+validation_errors = _cached_validate_all(hotel_data.bookings, hotel_data.inventory, hotel_data.current_prices)
 if validation_errors:
     st.error(t("validation_failed", lang))
     for error in validation_errors:
@@ -1674,10 +1744,10 @@ with st.sidebar:
 
 tab_dashboard, tab_recommendations, tab_approval, tab_backtesting = st.tabs(
     [
-        t("sales_dashboard", lang),
-        t("recommendations", lang),
-        alabel("tab", lang),
-        bt_label("tab", lang),
+        f'📊 {t("sales_dashboard", lang)}',
+        f'💡 {t("recommendations", lang)}',
+        f'✅ {alabel("tab", lang)}',
+        f'🧪 {bt_label("tab", lang)}',
     ]
 )
 
