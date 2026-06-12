@@ -101,16 +101,12 @@ st.set_page_config(
 )
 
 
-def _request_host() -> str:
-    try:
-        return str(st.context.headers.get("Host", "") or "").split(":")[0].strip().lower()
-    except Exception:
-        return ""
-
-
 def _is_local_request() -> bool:
-    host = _request_host()
-    return host in {"", "localhost", "127.0.0.1", "::1"} or host.endswith(".localhost")
+    try:
+        ip: str = str(st.context.ip_address or "").strip()
+    except Exception:
+        return False  # fail-closed: unknown origin is not local
+    return ip in {"127.0.0.1", "::1", "0:0:0:0:0:0:0:1"} or ip.startswith("127.")
 
 
 def _allow_unauthenticated_demo() -> bool:

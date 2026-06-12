@@ -13,7 +13,7 @@ def sanitize_excel_df(df: pd.DataFrame) -> pd.DataFrame:
     displayed, so VLOOKUP lookups on the sanitised value still work correctly.
     """
     out = df.copy()
-    for col in out.select_dtypes(include="str").columns:
+    for col in out.select_dtypes(include=["object", "string"]).columns:
         out[col] = out[col].map(
             lambda v: ("'" + v) if isinstance(v, str) and v and v[0] in _FORMULA_PREFIXES else v
         )

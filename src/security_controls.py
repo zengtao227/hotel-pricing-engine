@@ -73,19 +73,29 @@ def default_actor_from_headers(
     return actor or "demo_user"
 
 
-def client_key_from_request(ip_address: object | None, headers: Mapping[str, object]) -> str:
+def client_key_from_request(
+    ip_address: object | None,
+    headers: Mapping[str, object],
+    environ: Mapping[str, str] | None = None,
+) -> str:
     ip_value: str = str(ip_address or "").strip()
     if ip_value:
         return ip_value
 
-    forwarded_for: str = header_value(headers, "X-Forwarded-For")
-    if forwarded_for:
-        first_forwarded_ip: str = forwarded_for.split(",", 1)[0].strip()
-        if first_forwarded_ip:
-            return first_forwarded_ip
+    # Only trust proxy-injected headers when explicitly configured; otherwise an
+    # attacker rotates X-Forwarded-For to get a fresh rate-limit bucket each attempt.
+    if env_flag("HOTEL_TRUST_PROXY_HEADERS", environ):
+        forwarded_for: str = header_value(headers, "X-Forwarded-For")
+        if forwarded_for:
+            first_forwarded_ip: str = forwarded_for.split(",", 1)[0].strip()
+            if first_forwarded_ip:
+                return first_forwarded_ip
 
-    real_ip: str = header_value(headers, "X-Real-IP")
-    return real_ip or "unknown"
+        real_ip: str = header_value(headers, "X-Real-IP")
+        if real_ip:
+            return real_ip
+
+    return "unknown"
 
 
 def pii_columns(columns: pd.Index) -> list[object]:

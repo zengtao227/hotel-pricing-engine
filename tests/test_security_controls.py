@@ -47,14 +47,23 @@ def test_client_key_prefers_streamlit_ip() -> None:
     assert client_key_from_request("198.51.100.5", headers) == "198.51.100.5"
 
 
-def test_client_key_falls_back_to_forwarded_for_first_ip() -> None:
+def test_client_key_falls_back_to_forwarded_for_first_ip_when_flag_set() -> None:
     headers: dict[str, object] = {"X-Forwarded-For": "203.0.113.10, 198.51.100.9"}
+    environ: dict[str, str] = {"HOTEL_TRUST_PROXY_HEADERS": "1"}
 
-    assert client_key_from_request(None, headers) == "203.0.113.10"
+    assert client_key_from_request(None, headers, environ) == "203.0.113.10"
 
 
-def test_client_key_falls_back_to_real_ip_then_unknown() -> None:
-    assert client_key_from_request(None, {"X-Real-IP": "198.51.100.8"}) == "198.51.100.8"
+def test_client_key_ignores_forwarded_for_without_flag() -> None:
+    headers: dict[str, object] = {"X-Forwarded-For": "203.0.113.10"}
+
+    assert client_key_from_request(None, headers, {}) == "unknown"
+
+
+def test_client_key_falls_back_to_real_ip_when_flag_set() -> None:
+    environ: dict[str, str] = {"HOTEL_TRUST_PROXY_HEADERS": "1"}
+
+    assert client_key_from_request(None, {"X-Real-IP": "198.51.100.8"}, environ) == "198.51.100.8"
     assert client_key_from_request(None, {}) == "unknown"
 
 
