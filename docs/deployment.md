@@ -6,7 +6,7 @@
 - **项目路径**：`/data/projects/hotel-pricing-engine`
 - **访问地址**：`https://hotel.zengsg.dpdns.org`
 - **运行方式**：systemd 服务 `hotel-pricing-engine.service`
-- **认证**：公网访问默认需要 `HOTEL_APP_PASSWORD`；仅 localhost 或显式 `HOTEL_ALLOW_UNAUTHENTICATED=1` 可无密码访问
+- **认证**：公网访问默认需要 `HOTEL_APP_PASSWORD`；只有显式设置 `HOTEL_ALLOW_UNAUTHENTICATED=1` 才可开放纯 Demo；本地无密码调试也必须显式设置 `HOTEL_ALLOW_LOCAL_UNAUTHENTICATED=1`
 
 ## systemd 服务
 
@@ -102,7 +102,9 @@ sudo systemctl daemon-reload
 sudo systemctl restart hotel-pricing-engine
 ```
 
-未设置 `HOTEL_APP_PASSWORD` 时，应用只允许 localhost 本地调试访问；公网请求会直接停止并提示需要配置密码。若确实要开放纯 Demo 站，必须显式设置 `HOTEL_ALLOW_UNAUTHENTICATED=1`，且不得上传真实客户数据。
+未设置 `HOTEL_APP_PASSWORD` 时，应用会默认拒绝访问。若要本地无密码调试，必须显式设置 `HOTEL_ALLOW_LOCAL_UNAUTHENTICATED=1`；若确实要开放纯 Demo 站，必须显式设置 `HOTEL_ALLOW_UNAUTHENTICATED=1`，且不得上传真实客户数据。
+
+> 注意：应用部署在 Caddy `reverse_proxy` 后时，Streamlit 看到的连接来源可能是 `127.0.0.1`。因此不能把 `127.0.0.1` 自动视为安全本地访问，必须使用上面的显式 opt-in。
 
 **方案二：Caddy basic_auth（网络层加固）**
 
@@ -120,7 +122,9 @@ hotel.zengsg.dpdns.org {
         admin $2a$14$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     }
     reverse_proxy localhost:8501 {
-        # 转发真实登录用户名给应用，用于审计日志 actor 字段
+        # 转发真实登录用户名给应用，用于审计日志 actor 字段。
+        # 先清除客户端伪造的同名头，再注入 Caddy 认证用户名。
+        header_up -X-Remote-User
         header_up X-Remote-User {http.auth.user.id}
     }
 }
@@ -151,6 +155,20 @@ sudo systemctl reload caddy
 > 真实试点需要严格审计操作人时，再额外设置 `Environment="HOTEL_STRICT_ACTOR=1"`。
 > 该模式要求同时启用 `HOTEL_TRUST_REMOTE_USER=1` 且代理实际注入可信 `X-Remote-User`；
 > 否则应用会停止审批页渲染，避免回退为手动 actor。
+
+> **反向代理下的登录限速**：如果希望登录失败限速按真实访客 IP 计数，
+> 可在 systemd 中设置 `Environment="HOTEL_TRUST_PROXY_HEADERS=1"`。
+> 仅当 Caddy 是唯一公网入口，并且 `reverse_proxy` 内清除并覆盖客户端传入的 IP 头时才启用：
+> ```
+> reverse_proxy localhost:8501 {
+>     header_up -X-Forwarded-For
+>     header_up X-Forwarded-For {remote_host}
+>     header_up -X-Real-IP
+>     header_up X-Real-IP {remote_host}
+> }
+> ```
+> 启用后，应用只有在自身看到的连接来源是 loopback（例如 Caddy -> Streamlit 的 `127.0.0.1`）时，
+> 才会用这些代理头作为登录限速 key；直接公网 IP 连接仍以 `st.context.ip_address` 为准。
 
 ---
 
@@ -309,6 +327,7 @@ sudo systemctl reload caddy
 推荐做法：
 - 对销售演示使用 `HOTEL_APP_PASSWORD`
 - 需要完全公开的纯 Demo 站时，显式设置 `HOTEL_ALLOW_UNAUTHENTICATED=1`
+- 需要本地无密码开发时，显式设置 `HOTEL_ALLOW_LOCAL_UNAUTHENTICATED=1`
 - 公开 Demo 站只使用内置数据，不上传真实酒店 CSV
 
 ---
@@ -365,6 +384,7 @@ grand.zengsg.dpdns.org {
         admin $2a$14$xxxxxxxxxxxxxxxxxxxxxxxx
     }
     reverse_proxy localhost:8502 {
+        header_up -X-Remote-User
         header_up X-Remote-User {http.auth.user.id}
     }
 }

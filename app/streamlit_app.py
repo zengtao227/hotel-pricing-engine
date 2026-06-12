@@ -1,10 +1,6 @@
 from __future__ import annotations
 import json
-import os
-import secrets
 import sys
-import threading
-import time
 from io import BytesIO
 from pathlib import Path
 
@@ -31,19 +27,18 @@ from src.price_rounding import PRICE_ROUNDING_STRATEGIES
 from src.pricing_engine import generate_recommendations
 from src.report_export import build_excel_report
 from src.security_controls import (
-    MAX_FILE_BYTES,
-    client_key_from_request,
     drop_pii_columns,
-    validate_uploaded_file_size,
 )
 from src.ui_help import h
 from src.validation import validate_all
 
+from app.auth import require_auth
 from app.ui_css import _inject_dark_css, _inject_mobile_css
 from app.tabs.dashboard import render_sales_dashboard
 from app.tabs.recommendations import render_recommendations
 from app.tabs.approval import render_price_approval_publishing
 from app.tabs._helpers import _expected_recommendation_rows
+from app.upload import uploaded_hotel_data_bytes
 
 
 @st.cache_data(ttl=300)
@@ -99,113 +94,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-
-def _is_local_request() -> bool:
-    try:
-        ip: str = str(st.context.ip_address or "").strip()
-    except Exception:
-        return False  # fail-closed: unknown origin is not local
-    return ip in {"127.0.0.1", "::1", "0:0:0:0:0:0:0:1"} or ip.startswith("127.")
-
-
-def _allow_unauthenticated_demo() -> bool:
-    value = os.environ.get("HOTEL_ALLOW_UNAUTHENTICATED", "")
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-# Module-level failure tracker shared by all sessions of this process, so an
-# attacker cannot reset the counter by simply opening a new browser session.
-_AUTH_FAILURES: dict[str, tuple[int, float]] = {}
-_AUTH_LOCK = threading.Lock()
-_AUTH_MAX_ATTEMPTS = 5
-_AUTH_LOCKOUT_SECONDS = 60.0
-
-
-def _client_key() -> str:
-    ip_address: object | None = None
-    try:
-        ip_address = st.context.ip_address
-    except Exception:
-        pass
-
-    headers: dict[str, object] = {}
-    try:
-        headers = dict(st.context.headers)
-    except Exception:
-        pass
-    return client_key_from_request(ip_address, headers)
-
-
-def _auth_locked_remaining(key: str) -> int:
-    with _AUTH_LOCK:
-        failures, locked_until = _AUTH_FAILURES.get(key, (0, 0.0))
-        remaining = locked_until - time.time()
-    return max(0, int(remaining) + 1) if remaining > 0 else 0
-
-
-def _record_auth_failure(key: str) -> int:
-    """Register one failed attempt; returns attempts left before lockout."""
-    with _AUTH_LOCK:
-        failures, _ = _AUTH_FAILURES.get(key, (0, 0.0))
-        failures += 1
-        locked_until = time.time() + _AUTH_LOCKOUT_SECONDS if failures >= _AUTH_MAX_ATTEMPTS else 0.0
-        if failures >= _AUTH_MAX_ATTEMPTS:
-            failures = 0
-        _AUTH_FAILURES[key] = (failures, locked_until)
-    return _AUTH_MAX_ATTEMPTS - failures if not locked_until else 0
-
-
-def _clear_auth_failures(key: str) -> None:
-    with _AUTH_LOCK:
-        _AUTH_FAILURES.pop(key, None)
-
-
-def _require_auth() -> None:
-    """Password gate controlled by HOTEL_APP_PASSWORD env var.
-
-    Localhost remains open for development. Public requests fail closed unless
-    HOTEL_APP_PASSWORD is set or HOTEL_ALLOW_UNAUTHENTICATED=1 is explicitly used.
-    """
-    password = os.environ.get("HOTEL_APP_PASSWORD", "")
-    if not password:
-        if _is_local_request() or _allow_unauthenticated_demo():
-            return
-        st.error("HOTEL_APP_PASSWORD is required for non-local access.")
-        st.stop()
-    if st.session_state.get("_authenticated"):
-        return
-
-    _, center, _ = st.columns([1, 1.2, 1])
-    with center:
-        st.markdown(
-            '<div style="text-align:center; padding: 2.5rem 0 0.5rem;">'
-            '<div style="font-size:2.6rem;">🏨</div>'
-            '<h2 style="margin:0.2rem 0 0.1rem;">Hotel Pricing Engine</h2>'
-            '<p style="color:#64748B; margin:0 0 1rem;">请输入访问密码 · Please enter the access password</p>'
-            "</div>",
-            unsafe_allow_html=True,
-        )
-        client = _client_key()
-        wait = _auth_locked_remaining(client)
-        if wait:
-            st.error(f"Too many failed attempts. Try again in {wait}s.")
-            st.stop()
-
-        with st.form("login_form"):
-            entered = st.text_input("Password", type="password", key="_auth_input")
-            submitted = st.form_submit_button("Login", type="primary", width="stretch")
-        if submitted:
-            if secrets.compare_digest(entered.encode(), password.encode()):
-                _clear_auth_failures(client)
-                st.session_state._authenticated = True
-                st.rerun()
-            attempts_left = _record_auth_failure(client)
-            if attempts_left:
-                st.error(f"Incorrect password. {attempts_left} attempt(s) remaining before lockout.")
-            else:
-                st.error(f"Too many failed attempts. Locked for {int(_AUTH_LOCKOUT_SECONDS)} seconds.")
-    st.stop()
 
 
 THEME_LABELS: dict[str, dict[str, str]] = {
@@ -313,14 +201,9 @@ def render_data_preview(hotel_data: HotelData, lang: str) -> None:
         )
 
 
-def _validate_uploaded_file_sizes(uploaded_files: list[tuple[object, str]]) -> None:
-    for uploaded_file, label in uploaded_files:
-        validate_uploaded_file_size(uploaded_file, label, MAX_FILE_BYTES)
-
-
 # ── Main app ──────────────────────────────────────────────────────────────────
 
-_require_auth()
+require_auth()
 
 header_left, header_right = st.columns([0.78, 0.22])
 with header_right:
@@ -381,16 +264,12 @@ try:
         if not bookings_file or not inventory_file or not current_prices_file:
             st.info(t("upload_hint", lang))
             st.stop()
-        _validate_uploaded_file_sizes(
-            [
-                (bookings_file, "bookings"),
-                (inventory_file, "inventory"),
-                (current_prices_file, "current_prices"),
-            ]
+        bookings_bytes, inventory_bytes, current_prices_bytes = uploaded_hotel_data_bytes(
+            bookings_file,
+            inventory_file,
+            current_prices_file,
         )
-        hotel_data = _cached_load_uploaded_data(
-            bookings_file.getvalue(), inventory_file.getvalue(), current_prices_file.getvalue()
-        )
+        hotel_data = _cached_load_uploaded_data(bookings_bytes, inventory_bytes, current_prices_bytes)
 except Exception as exc:
     st.error(f"{t('load_error', lang)}: {exc}")
     st.stop()
