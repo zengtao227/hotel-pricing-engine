@@ -11,6 +11,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from src.i18n import t
 from src.approval_workflow import (
     accept_price_changes,
     alabel,
@@ -189,15 +190,9 @@ def render_price_approval_publishing(
         st.info(alabel("audit_empty", lang))
     else:
         audit_log_column_config = {
-            "current_price": st.column_config.NumberColumn(
-                "当前价" if lang == "zh" else "Current Price", format="%.2f"
-            ),
-            "recommended_price": st.column_config.NumberColumn(
-                "系统推荐价" if lang == "zh" else "Recommended Price", format="%.2f"
-            ),
-            "approved_price": st.column_config.NumberColumn(
-                "最终批准价" if lang == "zh" else "Approved Price", format="%.0f"
-            ),
+            "current_price": st.column_config.NumberColumn(t("column_current_price", lang), format="%.2f"),
+            "recommended_price": st.column_config.NumberColumn(t("column_recommended_price", lang), format="%.2f"),
+            "approved_price": st.column_config.NumberColumn(t("column_approved_price", lang), format="%.0f"),
         }
         st.dataframe(
             st.session_state.approval_log,

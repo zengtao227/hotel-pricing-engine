@@ -46,6 +46,10 @@ def _format_percent(value: float) -> str:
     return f"{value:.1%}"
 
 
+def _has_risk_flags(s: pd.Series) -> pd.Series:
+    return s.fillna("").astype(str).str.strip().ne("")
+
+
 def _metric_card_html(label: str, value: str | int | float, accent: str) -> str:
     safe_label = escape(str(label))
     safe_value = escape(str(value))
@@ -103,7 +107,7 @@ def _styled_recommendations(df: pd.DataFrame, localized: pd.DataFrame, ui_theme:
 def _show_recommendation_table(df: pd.DataFrame, lang: str, ui_theme: str) -> None:
     st.caption(t("table_legend", lang), unsafe_allow_html=True)
     localized = localized_recommendations(df, lang)
-    risk_series = df["risk_flags"].fillna("").astype(str).str.strip().ne("").map({True: "⚠️", False: ""})
+    risk_series = _has_risk_flags(df["risk_flags"]).map({True: "⚠️", False: ""})
     risk_series.index = localized.index
     localized.insert(0, "⚠", risk_series)
     st.dataframe(
@@ -125,7 +129,7 @@ def _attention_text(key: str, lang: str, count: int) -> str:
 def _show_attention_summary(df: pd.DataFrame, lang: str) -> None:
     if df.empty:
         return
-    risk_count = int((df["risk_flags"].fillna("").astype(str).str.strip() != "").sum())
+    risk_count = int(_has_risk_flags(df["risk_flags"]).sum())
     high_confidence_change_count = int(((df["action"] != "hold") & (df["confidence"] == "high")).sum())
     if risk_count:
         st.warning(_attention_text("risk", lang, risk_count))

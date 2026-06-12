@@ -59,6 +59,7 @@ TRANSLATIONS = {
     "column_room_type": {"zh": "房型", "en": "Room Type", "de": "Zimmertyp", "fr": "Type de chambre"},
     "column_current_price": {"zh": "当前价", "en": "Current Price", "de": "Aktueller Preis", "fr": "Prix actuel"},
     "column_recommended_price": {"zh": "推荐价", "en": "Recommended Price", "de": "Empfohlener Preis", "fr": "Prix recommandé"},
+    "column_approved_price": {"zh": "批准价", "en": "Approved Price", "de": "Genehmigter Preis", "fr": "Prix approuvé"},
     "column_price_floor": {"zh": "最低价", "en": "Price Floor", "de": "Mindestpreis", "fr": "Prix minimum"},
     "column_price_ceiling": {"zh": "最高价", "en": "Price Ceiling", "de": "Höchstpreis", "fr": "Prix maximum"},
     "column_action": {"zh": "建议动作", "en": "Action", "de": "Aktion", "fr": "Action"},

@@ -14,6 +14,7 @@ from src.i18n import t
 from src.ui_help import render_interpretation_expander
 
 from app.tabs._helpers import (
+    _has_risk_flags,
     _render_attention_cards,
     _show_attention_summary,
     _show_recommendation_table,
@@ -81,7 +82,7 @@ def render_recommendations(
 
     if not filtered.empty:
         action_order = {"increase": 0, "decrease": 1, "hold": 2}
-        filtered["_has_risk"] = filtered["risk_flags"].fillna("").astype(str).str.strip().ne("").astype(int)
+        filtered["_has_risk"] = _has_risk_flags(filtered["risk_flags"]).astype(int)
         filtered["_action_order"] = filtered["action"].map(action_order).fillna(9)
         filtered["_rev_abs"] = pd.to_numeric(filtered.get("expected_revenue_delta", 0), errors="coerce").abs().fillna(0)
         filtered = filtered.sort_values(

@@ -561,26 +561,6 @@ def _inject_dark_css() -> None:
             text-shadow: 0 0 18px rgba(96,165,250,0.24);
         }
 
-        [data-testid="stMetric"]:nth-of-type(4n + 1) [data-testid="stMetricValue"],
-        [data-testid="stMetric"]:nth-of-type(4n + 1) [data-testid="stMetricValue"] * {
-            color: #60A5FA !important;
-        }
-
-        [data-testid="stMetric"]:nth-of-type(4n + 2) [data-testid="stMetricValue"],
-        [data-testid="stMetric"]:nth-of-type(4n + 2) [data-testid="stMetricValue"] * {
-            color: #34D399 !important;
-        }
-
-        [data-testid="stMetric"]:nth-of-type(4n + 3) [data-testid="stMetricValue"],
-        [data-testid="stMetric"]:nth-of-type(4n + 3) [data-testid="stMetricValue"] * {
-            color: #FCD34D !important;
-        }
-
-        [data-testid="stMetric"]:nth-of-type(4n + 4) [data-testid="stMetricValue"],
-        [data-testid="stMetric"]:nth-of-type(4n + 4) [data-testid="stMetricValue"] * {
-            color: #FC8181 !important;
-        }
-
         [data-testid="stMetricDelta"] {
             color: #C8DAE8 !important;
         }

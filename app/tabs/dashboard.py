@@ -18,6 +18,7 @@ from src.ui_theme import apply_plotly_theme
 from app.tabs._helpers import (
     _format_currency,
     _format_percent,
+    _has_risk_flags,
     _metric_grid,
     _recommendation_score,
     _render_attention_cards,
@@ -39,7 +40,7 @@ def render_sales_dashboard(
 
     price_change_count = int((recommendations["action"] != "hold").sum()) if not recommendations.empty else 0
     high_confidence_count = int((recommendations["confidence"] == "high").sum()) if not recommendations.empty else 0
-    risk_count = int((recommendations["risk_flags"].fillna("") != "").sum()) if not recommendations.empty else 0
+    risk_count = int(_has_risk_flags(recommendations["risk_flags"]).sum()) if not recommendations.empty else 0
     horizon_count = len(recommendations["stay_date"].unique()) if not recommendations.empty else 0
 
     _metric_grid(
@@ -139,14 +140,14 @@ def render_sales_dashboard(
         st.plotly_chart(apply_plotly_theme(trend_fig, ui_theme), width="stretch")
 
     st.subheader(t("top_opportunities", lang))
-    has_risk = recommendations["risk_flags"].fillna("").astype(str).str.strip() != ""
+    has_risk = _has_risk_flags(recommendations["risk_flags"])
     priority = recommendations[(recommendations["action"] != "hold") | has_risk].copy()
     if priority.empty:
         st.info(t("no_priority_items", lang))
     else:
         _show_attention_summary(priority, lang)
         _render_attention_cards(priority, lang)
-        priority["_risk_score"] = priority["risk_flags"].fillna("").astype(str).str.strip().ne("").astype(int)
+        priority["_risk_score"] = _has_risk_flags(priority["risk_flags"]).astype(int)
         priority["_confidence_score"] = priority.apply(lambda row: _recommendation_score(row)[0], axis=1)
         priority["_revenue_abs"] = priority.apply(lambda row: _recommendation_score(row)[1], axis=1)
         priority = priority.sort_values(
