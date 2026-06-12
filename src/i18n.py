@@ -12,6 +12,7 @@ TRANSLATIONS = {
     "upload_hint": {"zh": "请上传三个 CSV 文件，或打开内置演示数据。", "en": "Upload all three CSV files or switch on bundled demo data.", "de": "Laden Sie alle drei CSV-Dateien hoch oder aktivieren Sie die Demo-Daten.", "fr": "Importez les trois fichiers CSV ou activez les données de démonstration."},
     "load_error": {"zh": "无法加载数据", "en": "Could not load data", "de": "Daten konnten nicht geladen werden", "fr": "Impossible de charger les données"},
     "validation_failed": {"zh": "数据校验失败。", "en": "Data validation failed.", "de": "Datenvalidierung fehlgeschlagen.", "fr": "Échec de la validation des données."},
+    "demo_validation_failed": {"zh": "系统内置演示数据异常，请联系维护人员。", "en": "Bundled demo data is unavailable. Please contact the maintainer.", "de": "Die integrierten Demo-Daten sind fehlerhaft. Bitte wenden Sie sich an die Wartung.", "fr": "Les données de démonstration intégrées sont indisponibles. Veuillez contacter l’équipe de maintenance."},
     "sales_dashboard": {"zh": "销售看板", "en": "Sales Dashboard", "de": "Vertriebs-Dashboard", "fr": "Tableau de bord commercial"},
     "recommendations": {"zh": "调价建议", "en": "Recommendations", "de": "Empfehlungen", "fr": "Recommandations"},
     "data_preview": {"zh": "数据预览", "en": "Data Preview", "de": "Datenvorschau", "fr": "Aperçu des données"},

@@ -48,23 +48,27 @@ def validate_bookings(bookings: pd.DataFrame) -> list[str]:
     if errors:
         return errors
 
-    if bookings["booking_date"].isna().any():
+    booking_dates = pd.to_datetime(bookings["booking_date"], errors="coerce")
+    check_in_dates = pd.to_datetime(bookings["check_in_date"], errors="coerce")
+    check_out_dates = pd.to_datetime(bookings["check_out_date"], errors="coerce")
+
+    if booking_dates.isna().any():
         errors.append("bookings: `booking_date` contains invalid dates")
-    if bookings["check_in_date"].isna().any():
+    if check_in_dates.isna().any():
         errors.append("bookings: `check_in_date` contains invalid dates")
-    if bookings["check_out_date"].isna().any():
+    if check_out_dates.isna().any():
         errors.append("bookings: `check_out_date` contains invalid dates")
 
-    bad_checkout = bookings["check_out_date"] <= bookings["check_in_date"]
+    bad_checkout = check_out_dates <= check_in_dates
     if bad_checkout.any():
         errors.append(f"bookings: {int(bad_checkout.sum())} rows have check_out_date <= check_in_date")
 
-    non_cancelled = bookings["status"].str.lower() != "cancelled"
-    bad_lead_time = non_cancelled & (bookings["booking_date"] > bookings["check_in_date"])
+    status_normalized = bookings["status"].astype(str).str.lower()
+    non_cancelled = status_normalized != "cancelled"
+    bad_lead_time = non_cancelled & (booking_dates > check_in_dates)
     if bad_lead_time.any():
         errors.append(f"bookings: {int(bad_lead_time.sum())} rows have booking_date > check_in_date")
 
-    status_normalized = bookings["status"].astype(str).str.lower()
     invalid_status = ~status_normalized.isin(ALLOWED_STATUSES)
     if invalid_status.any():
         errors.append(f"bookings: {int(invalid_status.sum())} rows have unsupported status")
@@ -84,9 +88,9 @@ def validate_bookings(bookings: pd.DataFrame) -> list[str]:
     if invalid_nights.any():
         errors.append(f"bookings: {int(invalid_nights.sum())} rows have invalid nights (must be whole numbers from 1–365)")
 
-    valid_stay_dates = bookings["check_in_date"].notna() & bookings["check_out_date"].notna()
+    valid_stay_dates = check_in_dates.notna() & check_out_dates.notna()
     valid_night_values = ~invalid_nights
-    expected_nights = (bookings["check_out_date"] - bookings["check_in_date"]).dt.days
+    expected_nights = (check_out_dates - check_in_dates).dt.days
     mismatched_nights = valid_stay_dates & valid_night_values & (nights_numeric != expected_nights)
     if mismatched_nights.any():
         errors.append(f"bookings: {int(mismatched_nights.sum())} rows have nights inconsistent with check_in/check_out dates")
@@ -105,7 +109,8 @@ def validate_inventory(inventory: pd.DataFrame) -> list[str]:
     if errors:
         return errors
 
-    if inventory["stay_date"].isna().any():
+    stay_dates = pd.to_datetime(inventory["stay_date"], errors="coerce")
+    if stay_dates.isna().any():
         errors.append("inventory: `stay_date` contains invalid dates")
 
     available_numeric = pd.to_numeric(inventory["available_rooms"], errors="coerce")
@@ -139,7 +144,8 @@ def validate_current_prices(current_prices: pd.DataFrame) -> list[str]:
     if errors:
         return errors
 
-    if current_prices["stay_date"].isna().any():
+    stay_dates = pd.to_datetime(current_prices["stay_date"], errors="coerce")
+    if stay_dates.isna().any():
         errors.append("current_prices: `stay_date` contains invalid dates")
 
     price_numeric = pd.to_numeric(current_prices["current_price"], errors="coerce")

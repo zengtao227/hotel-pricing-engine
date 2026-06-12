@@ -287,9 +287,12 @@ hotel_data = HotelData(
 
 validation_errors = _cached_validate_all(hotel_data.bookings, hotel_data.inventory, hotel_data.current_prices)
 if validation_errors:
-    st.error(t("validation_failed", lang))
-    for error in validation_errors:
-        st.write(f"- {error}")
+    if use_demo:
+        st.error(t("demo_validation_failed", lang))
+    else:
+        st.error(t("validation_failed", lang))
+        for error in validation_errors:
+            st.write(f"- {error}")
     st.stop()
 
 observation_date = pd.to_datetime(hotel_data.current_prices["stay_date"]).min()
