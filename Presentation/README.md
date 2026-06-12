@@ -4,8 +4,11 @@
 
 ## 文件
 
-- `index.html`: 给酒店老板看的精简版演示文稿。适合直接部署到静态网站或 VPS。
-- `assets/`: 后续可放产品截图，例如销售看板、调价建议、回测分析、审批流程截图。
+- `index.html`: 演示文稿入口页，链接决策版、手机版和培训版。
+- `decision/index.html`: 给酒店老板看的横屏决策版演示文稿。
+- `decision/mobile.html`: 给手机竖屏阅读和转发使用的手机版介绍页。
+- `training/index.html`: 员工或管理层培训用的完整操作材料。
+- `assets/`: 产品截图素材，例如销售看板、调价建议、回测分析、审批流程截图。该目录按 `.gitignore` 约定只放在 VPS / 本地，不推送到 GitHub。
 
 ## 如何部署
 
@@ -39,7 +42,7 @@ Presentation/assets/
 05-channel-pricing.png
 ```
 
-目前 `index.html` 是纯 HTML/CSS 版本，不依赖截图也可以完整展示。
+HTML 源文件纳入 Git；截图素材保留在 `Presentation/assets/`，随 VPS 静态目录提供，不随 GitHub 推送。
 
 ## 你如何把图片给 ChatGPT
 

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>酒店收益管理与智能调价助手｜手机版</title>
+<meta name="description" content="酒店收益管理与智能调价助手：面向酒店管理者的手机阅读版介绍。">
+<style>
+:root{
+  --ink:#111827;--muted:#5f6878;--line:rgba(17,24,39,.12);
+  --navy:#1E3A8A;--navy-soft:#EFF6FF;--gold:#A16207;--green:#059669;--red:#B42318;--blue:#0369A1;
+  --paper:#FFFFFF;--soft:#F8FAFC;--shadow:0 14px 38px rgba(17,24,39,.09);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:radial-gradient(circle at top left,rgba(30,58,138,.09),transparent 34rem),linear-gradient(180deg,#fff,#F8FAFC 60%,#fff);
+  color:var(--ink);font-family:Inter,"Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;-webkit-font-smoothing:antialiased;
+}
+a{color:inherit}
+.wrap{width:min(100%,760px);margin:0 auto;padding:0 18px 86px}
+.topbar{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);background:rgba(255,255,255,.88);border-bottom:1px solid var(--line)}
+.topbar-inner{width:min(100%,760px);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px}
+.brand{font-size:14px;font-weight:850;color:var(--navy);line-height:1.2}
+.brand span{font-weight:650;color:#64748B}
+.top-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 13px;border-radius:999px;text-decoration:none;font-size:14px;font-weight:800;border:1px solid var(--line);background:#fff;color:var(--ink);white-space:nowrap}
+.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}.btn.blue{background:var(--navy-soft);border-color:rgba(30,58,138,.20);color:var(--navy)}
+.hero{padding:34px 0 26px}
+.kicker{display:inline-flex;align-items:center;gap:8px;color:var(--navy);font-size:13px;font-weight:900;letter-spacing:.02em;margin-bottom:14px}
+.kicker:before{content:"";width:28px;height:3px;border-radius:99px;background:var(--navy)}
+h1{font-size:clamp(34px,9vw,54px);line-height:1.05;letter-spacing:-.04em;margin:0;font-weight:900}
+h2{font-size:clamp(25px,6.4vw,38px);line-height:1.16;letter-spacing:-.03em;margin:0 0 12px;font-weight:900}
+h3{font-size:20px;line-height:1.22;margin:0 0 7px;font-weight:880}
+p{font-size:17px;line-height:1.62;margin:0;color:var(--muted)}
+.lede{margin-top:16px;font-size:19px;line-height:1.58}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.tag{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:7px 11px;background:rgba(255,255,255,.84);color:var(--muted);font-size:13px;font-weight:750}
+.notice{margin-top:18px;border:1px solid rgba(30,58,138,.20);border-radius:16px;background:rgba(239,246,255,.72);padding:14px 15px;color:var(--navy);font-size:15px;line-height:1.5;font-weight:720}
+.section{margin:18px 0;padding:24px 0 4px;scroll-margin-top:70px}
+.card{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 8px 24px rgba(17,24,39,.045);margin:12px 0}
+.card.teal{border-left:5px solid var(--navy)}.card.gold{border-left:5px solid var(--gold)}.card.green{border-left:5px solid var(--green)}.card.red{border-left:5px solid var(--red)}.card.blue{border-left:5px solid var(--blue)}
+.grid{display:grid;gap:12px}.grid.two{grid-template-columns:1fr}
+@media(min-width:650px){.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.big{font-size:42px;line-height:1;font-weight:950;color:var(--navy);margin-bottom:8px}
+.shot{border:1px solid var(--line);background:#F1F5F9;border-radius:20px;overflow:hidden;box-shadow:var(--shadow);margin:16px 0 8px}
+.shot img{display:block;width:100%;height:auto;background:#F1F5F9}
+.tap{font-size:13px;color:var(--muted);margin-top:8px;text-align:center}
+.table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff;margin:15px 0}
+.table th,.table td{text-align:left;padding:11px 10px;border-bottom:1px solid rgba(17,24,39,.08);font-size:14px;line-height:1.36}
+.table th{background:var(--soft);color:var(--ink);font-weight:850}.table td{color:var(--muted)}.table tr:last-child td{border-bottom:0}
+.hi{color:var(--navy)!important;font-weight:900}.good{color:var(--green)!important;font-weight:900}.risk{color:var(--red)!important;font-weight:900}
+.callout{border:1px solid rgba(30,58,138,.22);background:rgba(30,58,138,.06);border-radius:16px;padding:14px 15px;color:var(--navy);font-size:16px;line-height:1.55;font-weight:780;margin:14px 0}
+.formula{border-radius:18px;padding:18px;background:#0F1F3D;color:#EFF6FF;font-size:16px;line-height:1.62;font-family:"SFMono-Regular",Consolas,monospace;white-space:pre-wrap;margin:16px 0}.formula .accent{color:#93C5FD}
+.eq{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px 16px;font-size:16px;line-height:1.58;color:var(--ink);margin:12px 0}.minus{color:var(--red);font-weight:900}
+.step{display:grid;grid-template-columns:38px 1fr;gap:12px;border:1px solid var(--line);background:#fff;border-radius:18px;padding:15px;margin:10px 0}
+.num{display:inline-flex;width:32px;height:32px;align-items:center;justify-content:center;border-radius:999px;background:var(--navy);color:#fff;font-weight:900}.step p{font-size:15px}
+.cta{margin:28px 0 0;padding:22px;border-radius:24px;background:linear-gradient(135deg,var(--navy),#0F1F3D);color:#fff;box-shadow:var(--shadow)}.cta h2,.cta p{color:#fff}.cta p{opacity:.88}.cta .btn{margin-top:16px}
+.bottom-nav{position:fixed;z-index:30;left:0;right:0;bottom:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.90);border-top:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.bottom-nav-inner{width:min(100%,760px);margin:0 auto;display:flex;gap:8px}.bottom-nav .btn{flex:1}
+.lightbox{display:none;position:fixed;z-index:100;inset:0;background:rgba(15,23,42,.92);padding:22px;align-items:center;justify-content:center}.lightbox.open{display:flex}.lightbox img{max-width:100%;max-height:88vh;border-radius:14px;background:#fff}
+.close{position:fixed;top:14px;right:14px;width:42px;height:42px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);color:#fff;font-size:22px}
+@media(max-width:390px){.wrap{padding-left:15px;padding-right:15px}.topbar-inner{padding-left:15px;padding-right:15px}.top-actions .btn:not(.primary){display:none}p{font-size:16px}.table th,.table td{font-size:13px;padding:10px 8px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">酒店智能调价助手<br><span>手机版</span></div>
+    <div class="top-actions">
+      <a class="btn blue" href="./index.html">横屏演示版</a>
+      <a class="btn primary" href="#pilot">试点方案</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="kicker">5 分钟了解项目</div>
+    <h1>酒店收益管理与<br>智能调价助手</h1>
+    <p class="lede">系统自动读取历史订单、当前房态、库存和价格，按入住日期与房型生成可解释的调价建议。第一阶段不自动改价，而是由管理人员审批后执行。</p>
+    <div class="tags"><span class="tag">可解释建议</span><span class="tag">人工审批</span><span class="tag">渠道净收益</span><span class="tag">2–4 周试点</span></div>
+    <div class="notice">手机竖屏可直接阅读。需要正式演示或投屏时，可点击右上角“横屏演示版”。</div>
+  </section>
+
+  <section class="section" id="pain">
+    <div class="kicker">为什么需要它</div>
+    <h2>酒店每天都在面对价格判断</h2>
+    <div class="grid">
+      <div class="card teal"><h3>旺日有没有卖便宜？</h3><p>周末、节假日、活动日需求上升时，人工反应慢，容易错过涨价窗口。</p></div>
+      <div class="card gold"><h3>临近入住该不该降价？</h3><p>还有不少空房时，降多少才合理？不降可能卖不掉，降太多又损失利润。</p></div>
+      <div class="card red"><h3>渠道成交价是否真的赚钱？</h3><p>折扣、佣金和促销叠加后，表面成交价不一定等于酒店净收益。</p></div>
+    </div>
+    <div class="callout">这个系统的价值，是把“凭经验调价”变成“可计算、可审批、可复盘”的经营流程。</div>
+  </section>
+
+  <section class="section" id="dashboard">
+    <div class="kicker">第一步：看经营概况</div>
+    <h2>先看哪里需要处理</h2>
+    <p>销售看板让管理者快速看到入住率、ADR、RevPAR、剩余库存、调价机会和风险提示。</p>
+    <div class="shot js-shot"><img src="../assets/01-sales-dashboard.png" alt="销售看板截图"></div>
+    <div class="tap">点击图片可放大查看</div>
+  </section>
+
+  <section class="section" id="workflow">
+    <div class="kicker">日常使用路径</div>
+    <h2>每天真正要看的三件事</h2>
+    <div class="grid two">
+      <div class="card teal"><div class="big">1</div><h3>看销售看板</h3><p>查看关键经营指标、未来入住压力和风险提醒。</p></div>
+      <div class="card gold"><div class="big">2</div><h3>看调价建议</h3><p>系统按日期和房型给出推荐价格及原因。</p></div>
+      <div class="card green"><div class="big">3</div><h3>审批与执行</h3><p>管理人员采纳、修改或拒绝建议，再导出或发布。</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="recommend">
+    <div class="kicker">第二步：看调价建议</div>
+    <h2>每个日期和房型都有建议</h2>
+    <p>系统不是只告诉你“涨价/降价”，而是把当前价、推荐价、价格边界、预期收益和风险说明放在一起。</p>
+    <div class="shot js-shot"><img src="../assets/02-recommendations.png" alt="调价建议截图"></div>
+    <div class="tap">点击图片可放大查看</div>
+    <div class="shot js-shot"><img src="../assets/02-recommendations-table.png" alt="调价建议表格截图"></div>
+    <div class="tap">点击图片可放大查看</div>
+  </section>
+
+  <section class="section" id="logic">
+    <div class="kicker">为什么推荐这个价格</div>
+    <h2>不是追求满房，而是追求总收益更高</h2>
+    <p>价格太低，房间容易卖满，但单间收入低；价格太高，单间收入高，但销量下降。系统要找的是“价格 × 预计销量”的更优平衡。</p>
+    <div class="formula"><span class="accent">Revenue</span> = Price × Sold Rooms
+
+最终推荐价 = 在价格边界内预期收益最高的候选价</div>
+  </section>
+
+  <section class="section" id="example">
+    <div class="kicker">一个容易理解的例子</div>
+    <h2>还剩 30 间房时，怎么定价？</h2>
+    <table class="table">
+      <thead><tr><th>候选价</th><th>预计卖出</th><th>新增收入</th><th>结果</th></tr></thead>
+      <tbody>
+        <tr><td>388</td><td>20 间</td><td>7,760</td><td>34,920</td></tr>
+        <tr><td class="hi">428</td><td>19 间</td><td>8,132</td><td class="hi">35,292</td></tr>
+        <tr><td>468</td><td>16 间</td><td>7,488</td><td>34,648</td></tr>
+        <tr><td>488</td><td>14 间</td><td>6,832</td><td>33,992</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">428 虽然预计少卖 1 间，但单价提高后，总预期收益更高，所以系统会推荐 428。</div>
+  </section>
+
+  <section class="section" id="channel">
+    <div class="kicker">渠道价和利润</div>
+    <h2>渠道展示价不等于酒店净收益</h2>
+    <div class="eq">内部批准基准价<br><span class="minus">− 会员折扣</span><br><span class="minus">− 促销折扣</span><br>= <strong>渠道展示价</strong></div>
+    <div class="eq">渠道展示价<br><span class="minus">− 渠道佣金</span><br><span class="minus">− 渠道运营成本</span><br>= <strong class="hi">酒店净收益</strong></div>
+    <table class="table">
+      <thead><tr><th>渠道</th><th>展示价</th><th>佣金</th><th>净收益</th></tr></thead>
+      <tbody>
+        <tr><td>官网直订</td><td>588</td><td>0%</td><td class="good">588</td></tr>
+        <tr><td>会员价</td><td>558</td><td>0%</td><td class="good">558</td></tr>
+        <tr><td>携程促销</td><td>541</td><td>0%</td><td class="good">541</td></tr>
+        <tr><td>Booking</td><td>528</td><td>15%</td><td class="risk">449</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">系统会把净收益过低或折扣过高的项目标红，避免“看起来卖出去了，但利润被渠道吃掉”。</div>
+  </section>
+
+  <section class="section" id="backtest">
+    <div class="kicker">部署前验证</div>
+    <h2>先用历史数据检验模型方向</h2>
+    <p>回测不是承诺真实一定多赚多少，而是检查模型在历史场景下是否给出合理的价格方向。</p>
+    <div class="shot js-shot"><img src="../assets/03-backtesting.png" alt="回测分析截图"></div>
+    <div class="tap">点击图片可放大查看</div>
+  </section>
+
+  <section class="section" id="approval">
+    <div class="kicker">安全控制</div>
+    <h2>自动生成建议，不等于自动改价</h2>
+    <div class="card red"><h3>新酒店默认人工审批</h3><p>所有最终价格变更必须由管理人员批准。系统只做建议、标记和记录。</p></div>
+    <div class="card green"><h3>以后可逐步自动化</h3><p>跑通一段时间后，低风险、小幅度、高置信度建议才考虑进入半自动候选。</p></div>
+    <div class="shot js-shot"><img src="../assets/04-approval-workflow.png" alt="审批流程截图"></div>
+    <div class="tap">点击图片可放大查看</div>
+  </section>
+
+  <section class="section" id="data">
+    <div class="kicker">数据接入</div>
+    <h2>三张 CSV 就能先跑通</h2>
+    <div class="grid">
+      <div class="card teal"><h3>历史订单 bookings.csv</h3><p>入住日期、房型、成交价、预订渠道、预订日期、订单状态。</p></div>
+      <div class="card gold"><h3>房态库存 inventory.csv</h3><p>日期、房型、可售总间数、维修停售数量。</p></div>
+      <div class="card green"><h3>当前挂牌价 current_prices.csv</h3><p>日期、房型、基准挂牌价，覆盖未来 30–60 天。</p></div>
+    </div>
+    <div class="callout">试点阶段可以先用 CSV 上传。后续再接 PMS、Channel Manager 或定时同步。</div>
+  </section>
+
+  <section class="section" id="privacy">
+    <div class="kicker">数据隐私</div>
+    <h2>不需要客人个人信息</h2>
+    <div class="grid two">
+      <div class="card green"><h3>建议保留</h3><p>房型、入住日期、预订日期、成交价、渠道、订单状态、房间数。</p></div>
+      <div class="card red"><h3>建议删除或脱敏</h3><p>客人姓名、电话、邮箱、身份证、护照、详细付款信息和个人备注。</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="pilot">
+    <div class="kicker">下一步</div>
+    <h2>试点合作：2–4 周跑通完整流程</h2>
+    <div class="step"><div class="num">1</div><div><h3>数据准备</h3><p>整理历史订单、库存、当前挂牌价，并脱敏个人信息。</p></div></div>
+    <div class="step"><div class="num">2</div><div><h3>规则确认</h3><p>确认房型映射、最低价、最高价、渠道折扣和审批人。</p></div></div>
+    <div class="step"><div class="num">3</div><div><h3>导入系统</h3><p>生成第一版销售看板、调价建议和渠道价预览。</p></div></div>
+    <div class="step"><div class="num">4</div><div><h3>每日审批</h3><p>系统每天生成建议，管理人员人工审批后执行。</p></div></div>
+    <div class="step"><div class="num">5</div><div><h3>复盘改进</h3><p>对比建议、审批结果和实际销售变化，决定是否继续使用或进入自动同步阶段。</p></div></div>
+    <div class="cta">
+      <h2>适合先小范围试用</h2>
+      <p>从人工审批模式开始，不改变酒店现有系统，不要求一次性接入复杂接口。先验证是否真的有经营价值。</p>
+      <a class="btn primary" style="background:#fff;color:#1E3A8A;border-color:#fff" href="./index.html">查看横屏演示版</a>
+    </div>
+  </section>
+</main>
+
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a class="btn" href="#pain">价值</a>
+    <a class="btn" href="#example">例子</a>
+    <a class="btn" href="#approval">安全</a>
+    <a class="btn primary" href="#pilot">试点</a>
+  </div>
+</nav>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-label="图片预览">
+  <button class="close" id="closeBox" aria-label="关闭">×</button>
+  <img id="lightboxImg" alt="">
+</div>
+
+<script>
+(function(){
+  const box = document.getElementById('lightbox');
+  const img = document.getElementById('lightboxImg');
+  const close = document.getElementById('closeBox');
+  document.querySelectorAll('.js-shot img').forEach(function(el){
+    el.addEventListener('click', function(){
+      img.src = el.src;
+      img.alt = el.alt || '';
+      box.classList.add('open');
+    });
+  });
+  function closeBox(){
+    box.classList.remove('open');
+    img.removeAttribute('src');
+  }
+  close.addEventListener('click', closeBox);
+  box.addEventListener('click', function(e){
+    if(e.target === box) closeBox();
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') closeBox();
+  });
+})();
+</script>
+</body>
+</html>
