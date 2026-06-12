@@ -30,10 +30,11 @@ from src.approval_workflow import (
     to_editor_display,
     undo_last_push,
     update_manual_flags,
-    _card_label,
+    card_label,
 )
 from src.audit_log_store import append_audit_log, load_audit_log, load_approval_draft, save_approval_draft
 from src.channel_pricing_ui import render_channel_price_preview
+from src.security_controls import default_actor_from_headers, strict_actor_enabled, trusted_remote_actor
 
 
 _ACTOR_INPUT_LABELS: dict[str, str] = {
@@ -57,16 +58,43 @@ _UNDO_LABELS: dict[str, tuple[str, str, str]] = {
     "fr": ("Annuler la publication", "Annulé", "Aucune ligne publiée à annuler."),
 }
 
+_STRICT_ACTOR_ERRORS: dict[str, str] = {
+    "zh": "已启用 HOTEL_STRICT_ACTOR=1，但没有可信的 X-Remote-User。请同时启用 HOTEL_TRUST_REMOTE_USER=1，并确保反向代理先清除客户端伪造头再注入认证用户名。",
+    "en": "HOTEL_STRICT_ACTOR=1 is enabled, but no trusted X-Remote-User is available. Enable HOTEL_TRUST_REMOTE_USER=1 behind a proxy that strips client-supplied headers before injecting the authenticated user.",
+    "de": "HOTEL_STRICT_ACTOR=1 ist aktiviert, aber kein vertrauenswürdiger X-Remote-User ist verfügbar. Aktivieren Sie HOTEL_TRUST_REMOTE_USER=1 hinter einem Proxy, der clientseitige Header entfernt und danach den authentifizierten Benutzer setzt.",
+    "fr": "HOTEL_STRICT_ACTOR=1 est activé, mais aucun X-Remote-User fiable n'est disponible. Activez HOTEL_TRUST_REMOTE_USER=1 derrière un proxy qui supprime les en-têtes client avant d'injecter l'utilisateur authentifié.",
+}
+
+
+def _context_headers() -> dict[str, object]:
+    try:
+        return dict(st.context.headers)
+    except Exception:
+        return {}
+
 
 def _default_actor() -> str:
-    # Caddy basic_auth forwards the authenticated user via X-Remote-User.
-    try:
-        header_user = st.context.headers.get("X-Remote-User")
-        if header_user:
-            return str(header_user)
-    except Exception:
-        pass
-    return "demo_user"
+    return default_actor_from_headers(_context_headers())
+
+
+def _trusted_actor() -> str | None:
+    return trusted_remote_actor(_context_headers())
+
+
+def _actor_for_audit(lang: str) -> str:
+    trusted_actor: str | None = _trusted_actor()
+    if strict_actor_enabled() and trusted_actor is None:
+        st.error(_STRICT_ACTOR_ERRORS.get(lang, _STRICT_ACTOR_ERRORS["en"]))
+        st.stop()
+
+    header_actor: str = trusted_actor or "demo_user"
+    actor_value: str = st.text_input(
+        _ACTOR_INPUT_LABELS.get(lang, _ACTOR_INPUT_LABELS["en"]),
+        value=st.session_state.get("audit_actor", header_actor),
+        key="audit_actor",
+        disabled=trusted_actor is not None,
+    )
+    return trusted_actor or (actor_value or "").strip() or header_actor
 
 
 def _approval_draft_key(signature: str, actor: str) -> str:
@@ -85,14 +113,7 @@ def render_price_approval_publishing(
     if "approval_log" not in st.session_state:
         st.session_state.approval_log = load_audit_log(audit_log_dir)
 
-    header_actor = _default_actor()
-    actor_value = st.text_input(
-        _ACTOR_INPUT_LABELS.get(lang, _ACTOR_INPUT_LABELS["en"]),
-        value=st.session_state.get("audit_actor", header_actor),
-        key="audit_actor",
-        disabled=header_actor != "demo_user",
-    )
-    actor = header_actor if header_actor != "demo_user" else (actor_value or "").strip() or header_actor
+    actor = _actor_for_audit(lang)
 
     signature = approval_signature(recommendations)
     draft_key = _approval_draft_key(signature, actor)
@@ -101,10 +122,10 @@ def render_price_approval_publishing(
         st.session_state.approval_table = draft if draft is not None else build_approval_table(recommendations)
         st.session_state.approval_signature = draft_key
 
-    view_card = _card_label("view_card", lang)
-    view_table = _card_label("view_table", lang)
+    view_card = card_label("view_card", lang)
+    view_table = card_label("view_table", lang)
     view_mode = st.radio(
-        _card_label("view_label", lang),
+        card_label("view_label", lang),
         options=[view_card, view_table],
         horizontal=True,
         label_visibility="collapsed",

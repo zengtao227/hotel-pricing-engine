@@ -147,6 +147,10 @@ sudo systemctl reload caddy
 > ```
 > 未启用 `HOTEL_TRUST_REMOTE_USER=1` 时，actor 字段始终显示为手动输入框（demo 模式），
 > 无论 `X-Remote-User` 头是否存在都不影响应用行为。
+>
+> 真实试点需要严格审计操作人时，再额外设置 `Environment="HOTEL_STRICT_ACTOR=1"`。
+> 该模式要求同时启用 `HOTEL_TRUST_REMOTE_USER=1` 且代理实际注入可信 `X-Remote-User`；
+> 否则应用会停止审批页渲染，避免回退为手动 actor。
 
 ---
 

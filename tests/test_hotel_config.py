@@ -10,9 +10,17 @@ from src.hotel_config import MAX_CONFIG_UPLOAD_BYTES, load_config_from_upload, n
 class _Upload:
     def __init__(self, payload: bytes) -> None:
         self._payload = payload
+        self.size: int = len(payload)
 
     def getvalue(self) -> bytes:
         return self._payload
+
+
+class _LargeUpload:
+    size: int = MAX_CONFIG_UPLOAD_BYTES + 1
+
+    def getvalue(self) -> bytes:
+        raise AssertionError("getvalue must not be called for oversized uploads")
 
 
 def test_normalize_hotel_config_keeps_valid_room_config():
@@ -66,6 +74,11 @@ def test_load_config_from_upload_rejects_large_json():
     upload = _Upload(b"{" + b'"x":' + b'"a"' * MAX_CONFIG_UPLOAD_BYTES + b"}")
     with pytest.raises(ValueError, match="exceeds"):
         load_config_from_upload(upload)
+
+
+def test_load_config_from_upload_rejects_large_json_before_getvalue():
+    with pytest.raises(ValueError, match="hotel_config"):
+        load_config_from_upload(_LargeUpload())
 
 
 def test_load_config_from_upload_normalizes_payload():

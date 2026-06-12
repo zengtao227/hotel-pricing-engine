@@ -30,6 +30,12 @@ from src.metrics import calculate_daily_metrics, summarize_overview
 from src.price_rounding import PRICE_ROUNDING_STRATEGIES
 from src.pricing_engine import generate_recommendations
 from src.report_export import build_excel_report
+from src.security_controls import (
+    MAX_FILE_BYTES,
+    client_key_from_request,
+    drop_pii_columns,
+    validate_uploaded_file_size,
+)
 from src.ui_help import h
 from src.validation import validate_all
 
@@ -121,13 +127,18 @@ _AUTH_LOCKOUT_SECONDS = 60.0
 
 
 def _client_key() -> str:
+    ip_address: object | None = None
     try:
-        ip = st.context.ip_address
-        if ip:
-            return str(ip)
+        ip_address = st.context.ip_address
     except Exception:
         pass
-    return "unknown"
+
+    headers: dict[str, object] = {}
+    try:
+        headers = dict(st.context.headers)
+    except Exception:
+        pass
+    return client_key_from_request(ip_address, headers)
 
 
 def _auth_locked_remaining(key: str) -> int:
@@ -296,11 +307,19 @@ def _export_language_selector(lang: str) -> str:
 def render_data_preview(hotel_data: HotelData, lang: str) -> None:
     st.subheader(t("data_preview", lang))
     with st.expander(t("bookings", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.bookings.head(50), lang), width="stretch")
+        st.dataframe(localize_room_type_values(drop_pii_columns(hotel_data.bookings).head(50), lang), width="stretch")
     with st.expander(t("inventory", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.inventory.head(50), lang), width="stretch")
+        st.dataframe(localize_room_type_values(drop_pii_columns(hotel_data.inventory).head(50), lang), width="stretch")
     with st.expander(t("current_prices", lang), expanded=False):
-        st.dataframe(localize_room_type_values(hotel_data.current_prices.head(50), lang), width="stretch")
+        st.dataframe(
+            localize_room_type_values(drop_pii_columns(hotel_data.current_prices).head(50), lang),
+            width="stretch",
+        )
+
+
+def _validate_uploaded_file_sizes(uploaded_files: list[tuple[object, str]]) -> None:
+    for uploaded_file, label in uploaded_files:
+        validate_uploaded_file_size(uploaded_file, label, MAX_FILE_BYTES)
 
 
 # ── Main app ──────────────────────────────────────────────────────────────────
@@ -366,6 +385,13 @@ try:
         if not bookings_file or not inventory_file or not current_prices_file:
             st.info(t("upload_hint", lang))
             st.stop()
+        _validate_uploaded_file_sizes(
+            [
+                (bookings_file, "bookings"),
+                (inventory_file, "inventory"),
+                (current_prices_file, "current_prices"),
+            ]
+        )
         hotel_data = _cached_load_uploaded_data(
             bookings_file.getvalue(), inventory_file.getvalue(), current_prices_file.getvalue()
         )

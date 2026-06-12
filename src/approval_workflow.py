@@ -84,7 +84,7 @@ def clabel(key: str, lang: str = "zh") -> str:
     return COL.get(key, {}).get(lang) or COL.get(key, {}).get("en") or key
 
 
-def _card_label(key: str, lang: str = "zh") -> str:
+def card_label(key: str, lang: str = "zh") -> str:
     return _CARD.get(key, {}).get(lang) or _CARD.get(key, {}).get("en") or key
 
 
@@ -372,10 +372,10 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str, actor: str =
     rejected_n = int((action_df["approval_status"] == "rejected").sum())
 
     m1, m2, m3 = st.columns(3)
-    m1.metric(_card_label("pending_count", lang), pending_n)
-    m2.metric(_card_label("approved_count", lang), approved_n)
-    m3.metric(_card_label("rejected_count", lang), rejected_n)
-    st.caption(_card_label("hold_note", lang))
+    m1.metric(card_label("pending_count", lang), pending_n)
+    m2.metric(card_label("approved_count", lang), approved_n)
+    m3.metric(card_label("rejected_count", lang), rejected_n)
+    st.caption(card_label("hold_note", lang))
 
     sorted_action = action_df.sort_values(
         "approval_status",
@@ -393,7 +393,7 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str, actor: str =
 
         with st.expander(title, expanded=(str(row["approval_status"]) == "pending")):
             if row.get("push_status") == "pushed":
-                st.success(_card_label("already_pushed", lang))
+                st.success(card_label("already_pushed", lang))
 
             cc1, cc2, cc3 = st.columns(3)
             cc1.metric(clabel("current_price", lang), f"{float(row['current_price']):.0f}")
@@ -421,7 +421,7 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str, actor: str =
             b1, b2 = st.columns(2)
             with b1:
                 if st.button(
-                    _card_label("approve_btn", lang),
+                    card_label("approve_btn", lang),
                     key=f"card_approve_{idx}",
                     width="stretch",
                     type="primary" if str(row["approval_status"]) == "pending" else "secondary",
@@ -437,7 +437,7 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str, actor: str =
                     st.rerun()
             with b2:
                 if st.button(
-                    _card_label("reject_btn", lang),
+                    card_label("reject_btn", lang),
                     key=f"card_reject_{idx}",
                     width="stretch",
                     disabled=is_pushed,

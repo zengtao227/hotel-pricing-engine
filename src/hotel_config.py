@@ -10,6 +10,7 @@ import streamlit as st
 
 from .i18n import LANGUAGES, t, translate_room_type
 from .price_rounding import PRICE_ROUNDING_STRATEGIES, round_to_price_ending
+from .security_controls import validate_uploaded_file_size
 
 
 DEFAULT_HOTEL_CONFIG: dict[str, Any] = {
@@ -167,6 +168,7 @@ def normalize_hotel_config(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def load_config_from_upload(uploaded_file) -> dict[str, Any]:
+    validate_uploaded_file_size(uploaded_file, "hotel_config.json", MAX_CONFIG_UPLOAD_BYTES)
     raw = uploaded_file.getvalue()
     if len(raw) > MAX_CONFIG_UPLOAD_BYTES:
         raise ValueError(f"Hotel config JSON exceeds {MAX_CONFIG_UPLOAD_BYTES:,} bytes")
