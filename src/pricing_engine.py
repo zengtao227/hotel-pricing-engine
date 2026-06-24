@@ -146,10 +146,9 @@ def generate_recommendations(
         active_seasons: list[dict[str, Any]] = seasons or []
         season_multiplier, season_name = get_season_multiplier(row.stay_date.date(), active_seasons)
         # Apply season multiplier to baseline occupancy for demand forecasting.
-        # Capped at (occupancy + 0.11) so the adjusted value never exceeds the simulation's
-        # ±0.12 neutral band above current occupancy — preventing the season uplift from
-        # being misread as "occupancy is underperforming vs baseline" and triggering a price cut.
-        adjusted_baseline_occupancy = min(baseline_occupancy * season_multiplier, occupancy + 0.11, 1.0)
+        # Only cap at the physical maximum of 1.0; removing the (occupancy + 0.11) cap
+        # ensures peak-season signal is preserved even when current occupancy is still low.
+        adjusted_baseline_occupancy = min(baseline_occupancy * season_multiplier, 1.0)
         pickup_14d = float(getattr(row, "pickup_14d", 0) or 0)
         sellable_rooms = float(getattr(row, "sellable_rooms", 0) or 0)
         sold_rooms = float(getattr(row, "sold_rooms", 0) or 0)
@@ -209,6 +208,12 @@ def generate_recommendations(
             risk_flags.append("limited historical baseline")
 
         bounded_current_price, min_price, max_price = _apply_price_bounds(current_price, row.room_type, room_price_bounds)
+        # During peak season the season multiplier signals higher expected demand, so
+        # we should not cut below the current price. Raise the effective price floor to
+        # current price (while still respecting any configured room-type floor above it).
+        effective_floor: float | None = min_price
+        if season_multiplier > 1.0:
+            effective_floor = max(bounded_current_price, min_price) if min_price is not None else bounded_current_price
         simulation: RevenueSimulationResult = simulate_revenue_maximizing_price(
             current_price=bounded_current_price,
             sellable_rooms=sellable_rooms,
@@ -221,7 +226,7 @@ def generate_recommendations(
             is_weekend=bool(row.is_weekend),
             max_change_pct=max_change_pct,
             rounding_strategy=price_rounding_strategy,
-            price_floor=min_price,
+            price_floor=effective_floor,
             price_ceiling=max_price,
         )
         recommended_price = simulation.recommended_price

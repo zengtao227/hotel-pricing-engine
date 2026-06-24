@@ -226,3 +226,41 @@ def test_seasons_none_same_as_empty():
         seasons=[],
     )
     assert recs_none.iloc[0]["recommended_price"] == recs_empty.iloc[0]["recommended_price"]
+
+
+def test_peak_season_early_low_occupancy_still_raises_price():
+    """旺季早期（occupancy 还低）时，季节系数应仍能推高推荐价，不被 occupancy 上限截断。"""
+    # 构造 3 个历史日期（occupancy=0.3，低于旺季预期）
+    metrics_rows = []
+    for d in ["2024-01-01", "2024-01-02", "2024-01-03", "2024-02-01"]:
+        metrics_rows.append({
+            "hotel_id": "H1",
+            "room_type": "Standard Double",
+            "stay_date": pd.to_datetime(d),
+            "sellable_rooms": 10,
+            "sold_rooms": 3,
+            "room_revenue": 1200.0,
+            "occupancy": 0.3,
+            "adr": 400.0,
+            "revpar": 120.0,
+            "is_weekend": pd.to_datetime(d).weekday() >= 5,
+            "booking_count": 3,
+        })
+    metrics_low_occ = pd.DataFrame(metrics_rows)
+    bookings = _bookings()
+    prices = _prices(["2024-02-01"])
+
+    recs_no_season = generate_recommendations(
+        metrics_low_occ, bookings, prices,
+        observation_date=pd.to_datetime("2024-02-01"),
+        seasons=[],
+    )
+    recs_peak = generate_recommendations(
+        metrics_low_occ, bookings, prices,
+        observation_date=pd.to_datetime("2024-02-01"),
+        seasons=[{"name": "旺季", "start": "2024-02-01", "end": "2024-02-28", "demand_multiplier": 2.0}],
+    )
+    price_no_season = recs_no_season.iloc[0]["recommended_price"]
+    price_peak = recs_peak.iloc[0]["recommended_price"]
+    # 旺季应推高价格，即使当前 occupancy 只有 0.3
+    assert price_peak >= price_no_season
