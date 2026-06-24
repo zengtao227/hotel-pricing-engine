@@ -29,7 +29,13 @@ DEFAULT_HOTEL_CONFIG: dict[str, Any] = {
         {"room_type": "Superior Double", "room_code": "SUP_DB", "base_price": 468.0, "min_price": 398.0, "max_price": 688.0, "weekend_uplift": 40.0, "enabled": True},
         {"room_type": "Family Room", "room_code": "FAM", "base_price": 588.0, "min_price": 488.0, "max_price": 888.0, "weekend_uplift": 40.0, "enabled": True},
     ],
-    "seasons": [],
+    "seasons": [
+        {"name": "春节黄金周", "start": "2026-01-25", "end": "2026-02-08", "demand_multiplier": 1.8},
+        {"name": "清明小长假", "start": "2026-04-03", "end": "2026-04-06", "demand_multiplier": 1.3},
+        {"name": "劳动节黄金周", "start": "2026-05-01", "end": "2026-05-05", "demand_multiplier": 1.5},
+        {"name": "暑期旺季", "start": "2026-07-01", "end": "2026-08-31", "demand_multiplier": 1.3},
+        {"name": "国庆黄金周", "start": "2026-10-01", "end": "2026-10-07", "demand_multiplier": 2.0},
+    ],
 }
 
 MAX_CONFIG_UPLOAD_BYTES = 200_000
@@ -167,7 +173,7 @@ def normalize_hotel_config(config: dict[str, Any]) -> dict[str, Any]:
         )
     normalized["room_types"] = rooms
 
-    raw_seasons = config.get("seasons", [])
+    raw_seasons = config.get("seasons", normalized["seasons"])
     if not isinstance(raw_seasons, list):
         raise ValueError("Invalid hotel config: `seasons` must be a list")
     if len(raw_seasons) > 50:

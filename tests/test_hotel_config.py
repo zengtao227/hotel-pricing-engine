@@ -124,9 +124,11 @@ def test_normalize_seasons_empty_is_valid():
     assert config["seasons"] == []
 
 
-def test_normalize_seasons_default_is_empty():
+def test_normalize_seasons_default_has_demo_seasons():
     config = normalize_hotel_config({})
-    assert config["seasons"] == []
+    # Default config includes demo Chinese holiday seasons
+    assert len(config["seasons"]) > 0
+    assert all("name" in s and "demand_multiplier" in s for s in config["seasons"])
 
 
 def test_get_season_multiplier_match():
