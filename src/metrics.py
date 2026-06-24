@@ -157,7 +157,6 @@ def calculate_historical_pickup_baseline(bookings: pd.DataFrame, observation_dat
     if h14.empty:
         return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d"])
 
-    h14 = h14.copy()
     h14["nights"] = pd.to_numeric(h14.get("nights", 1), errors="coerce").fillna(1).clip(lower=1, upper=365).astype(int)
     rep = h14.loc[h14.index.repeat(h14["nights"])].copy()
     rep["_offset"] = rep.groupby(level=0).cumcount()
