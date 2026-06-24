@@ -144,3 +144,85 @@ class TestGenerateRecommendations:
             horizon_days=14,
         )
         assert len(recs) <= 2
+
+
+def test_peak_season_does_not_lower_recommended_price():
+    """旺季系数应使推荐价 >= 无季节时的推荐价（需求基线上调，不应压低价格）。"""
+    metrics = _metrics(["2024-01-01", "2024-01-02", "2024-01-03", "2024-02-01"])
+    bookings = _bookings()
+    prices = _prices(["2024-02-01"])
+
+    recs_no_season = generate_recommendations(
+        metrics, bookings, prices,
+        observation_date=pd.to_datetime("2024-02-01"),
+        seasons=[],
+    )
+    recs_peak = generate_recommendations(
+        metrics, bookings, prices,
+        observation_date=pd.to_datetime("2024-02-01"),
+        seasons=[{"name": "旺季", "start": "2024-02-01", "end": "2024-02-28", "demand_multiplier": 2.0}],
+    )
+    price_no_season = recs_no_season.iloc[0]["recommended_price"]
+    price_peak = recs_peak.iloc[0]["recommended_price"]
+    assert price_peak >= price_no_season
+
+
+def test_peak_season_name_in_reasons():
+    """旺季名称必须出现在 main_reasons 里。"""
+    metrics = _metrics(["2024-01-01", "2024-01-02", "2024-01-03", "2024-02-01"])
+    bookings = _bookings()
+    prices = _prices(["2024-02-01"])
+
+    recs = generate_recommendations(
+        metrics, bookings, prices,
+        observation_date=pd.to_datetime("2024-02-01"),
+        seasons=[{"name": "春节", "start": "2024-01-01", "end": "2024-02-28", "demand_multiplier": 1.8}],
+    )
+    assert "春节" in recs.iloc[0]["main_reasons"]
+
+
+def test_low_season_name_in_reasons():
+    """淡季名称必须出现在 main_reasons 里。"""
+    metrics = _metrics(["2024-01-01", "2024-01-02", "2024-01-03", "2024-02-01"])
+    bookings = _bookings()
+    prices = _prices(["2024-02-01"])
+
+    recs = generate_recommendations(
+        metrics, bookings, prices,
+        observation_date=pd.to_datetime("2024-02-01"),
+        seasons=[{"name": "11月淡季", "start": "2024-01-01", "end": "2024-02-28", "demand_multiplier": 0.6}],
+    )
+    assert "11月淡季" in recs.iloc[0]["main_reasons"]
+
+
+def test_no_season_match_no_season_in_reasons():
+    """入住日期不在任何季节区间内时，reasons 里不应出现季节名。"""
+    metrics = _metrics(["2024-01-01", "2024-01-02", "2024-01-03", "2024-02-01"])
+    bookings = _bookings()
+    prices = _prices(["2024-02-01"])
+
+    recs = generate_recommendations(
+        metrics, bookings, prices,
+        observation_date=pd.to_datetime("2024-02-01"),
+        seasons=[{"name": "春节", "start": "2024-03-01", "end": "2024-03-31", "demand_multiplier": 1.8}],
+    )
+    assert "春节" not in recs.iloc[0]["main_reasons"]
+
+
+def test_seasons_none_same_as_empty():
+    """seasons=None 与 seasons=[] 行为一致，无回归。"""
+    metrics = _metrics(["2024-01-01", "2024-01-02", "2024-01-03", "2024-02-01"])
+    bookings = _bookings()
+    prices = _prices(["2024-02-01"])
+
+    recs_none = generate_recommendations(
+        metrics, bookings, prices,
+        observation_date=pd.to_datetime("2024-02-01"),
+        seasons=None,
+    )
+    recs_empty = generate_recommendations(
+        metrics, bookings, prices,
+        observation_date=pd.to_datetime("2024-02-01"),
+        seasons=[],
+    )
+    assert recs_none.iloc[0]["recommended_price"] == recs_empty.iloc[0]["recommended_price"]

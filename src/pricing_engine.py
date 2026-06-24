@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
-from .metrics import calculate_pickup
+from .hotel_config import get_season_multiplier
+from .metrics import calculate_historical_pickup_baseline, calculate_pickup
 from .revenue_simulation import RevenueSimulationResult, simulate_revenue_maximizing_price
 
 
@@ -82,6 +85,7 @@ def generate_recommendations(
     max_change_pct: float = 0.15,
     price_rounding_strategy: str = "chinese_lucky",
     room_price_bounds: dict | None = None,
+    seasons: list[dict[str, Any]] | None = None,
 ) -> pd.DataFrame:
     """Generate explainable revenue-maximizing price recommendations."""
     prices = current_prices.copy()
@@ -126,15 +130,26 @@ def generate_recommendations(
     )
 
     recs = future.merge(baselines, how="left", on=["hotel_id", "room_type", "is_weekend"])
+    pickup_baseline = calculate_historical_pickup_baseline(bookings, observation_date)
+    recs = recs.merge(pickup_baseline, how="left", on=["hotel_id", "room_type", "is_weekend"])
     recs["baseline_occupancy"] = recs["baseline_occupancy"].fillna(historical["occupancy"].median())
     recs["baseline_adr"] = recs["baseline_adr"].fillna(historical["adr"].median())
     recs["baseline_revpar"] = recs["baseline_revpar"].fillna(historical["revpar"].median())
+    recs["baseline_pickup_14d"] = recs["baseline_pickup_14d"].fillna(0.0)
 
     recommendations = []
     for row in recs.itertuples(index=False):
         current_price = float(row.current_price)
         occupancy = float(row.occupancy or 0)
         baseline_occupancy = float(row.baseline_occupancy or 0)
+        baseline_pickup_14d = float(getattr(row, "baseline_pickup_14d", 0) or 0)
+        active_seasons: list[dict[str, Any]] = seasons or []
+        season_multiplier, season_name = get_season_multiplier(row.stay_date.date(), active_seasons)
+        # Apply season multiplier to baseline occupancy for demand forecasting.
+        # Capped at (occupancy + 0.11) so the adjusted value never exceeds the simulation's
+        # ±0.12 neutral band above current occupancy — preventing the season uplift from
+        # being misread as "occupancy is underperforming vs baseline" and triggering a price cut.
+        adjusted_baseline_occupancy = min(baseline_occupancy * season_multiplier, occupancy + 0.11, 1.0)
         pickup_14d = float(getattr(row, "pickup_14d", 0) or 0)
         sellable_rooms = float(getattr(row, "sellable_rooms", 0) or 0)
         sold_rooms = float(getattr(row, "sold_rooms", 0) or 0)
@@ -144,6 +159,13 @@ def generate_recommendations(
         score = 0
         reasons = []
         risk_flags = []
+
+        if season_multiplier > 1.05:
+            score += 1
+            reasons.append(f"入住日期在旺季（{season_name}），需求预期高于历史均值")
+        elif season_multiplier < 0.95:
+            score -= 1
+            reasons.append(f"入住日期在淡季（{season_name}），需求预期低于历史均值")
 
         if row.is_weekend:
             score += 1
@@ -156,12 +178,21 @@ def generate_recommendations(
             score -= 2
             reasons.append("occupancy below similar historical dates")
 
-        if pickup_14d >= 4:
-            score += 1
-            reasons.append("recent 14-day pickup is strong")
-        elif days_to_arrival <= 14 and pickup_14d <= 1:
-            score -= 1
-            reasons.append("weak recent pickup close to arrival")
+        if baseline_pickup_14d > 0:
+            pickup_velocity_ratio = pickup_14d / baseline_pickup_14d
+            if pickup_velocity_ratio >= 1.3:
+                score += 1
+                reasons.append(f"近期预订速度高于历史同期（{pickup_velocity_ratio:.0%}）")
+            elif pickup_velocity_ratio <= 0.7:
+                score -= 1
+                reasons.append(f"近期预订速度低于历史同期（{pickup_velocity_ratio:.0%}）")
+        else:
+            if pickup_14d >= 4:
+                score += 1
+                reasons.append("recent 14-day pickup is strong")
+            elif days_to_arrival <= 14 and pickup_14d <= 1:
+                score -= 1
+                reasons.append("weak recent pickup close to arrival")
 
         if remaining_ratio < 0.25:
             score += 2
@@ -184,7 +215,7 @@ def generate_recommendations(
             known_sold_rooms=sold_rooms,
             known_room_revenue=float(getattr(row, "room_revenue", 0) or 0),
             occupancy=occupancy,
-            baseline_occupancy=baseline_occupancy,
+            baseline_occupancy=adjusted_baseline_occupancy,
             pickup_14d=pickup_14d,
             days_to_arrival=days_to_arrival,
             is_weekend=bool(row.is_weekend),
