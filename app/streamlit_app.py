@@ -74,8 +74,10 @@ def _cached_generate_recommendations(
     max_change_pct: float,
     price_rounding_strategy: str,
     room_price_bounds_json: str,
+    seasons_json: str = "",
 ) -> pd.DataFrame:
     room_price_bounds = json.loads(room_price_bounds_json) if room_price_bounds_json else None
+    seasons = json.loads(seasons_json) if seasons_json else None
     return generate_recommendations(
         metrics=metrics,
         bookings=bookings,
@@ -85,6 +87,7 @@ def _cached_generate_recommendations(
         max_change_pct=max_change_pct,
         price_rounding_strategy=price_rounding_strategy,
         room_price_bounds=room_price_bounds,
+        seasons=seasons,
     )
 
 
@@ -306,6 +309,7 @@ bookings_as_of = hotel_data.bookings[
 metrics = _cached_calculate_daily_metrics(bookings_as_of, hotel_data.inventory)
 room_price_bounds = room_bounds_from_config(hotel_config)
 
+seasons = hotel_config.get("seasons", [])
 recommendations = _cached_generate_recommendations(
     metrics=metrics,
     bookings=bookings_as_of,
@@ -315,6 +319,7 @@ recommendations = _cached_generate_recommendations(
     max_change_pct=max_change_pct,
     price_rounding_strategy=price_rounding_strategy,
     room_price_bounds_json=json.dumps(room_price_bounds, sort_keys=True) if room_price_bounds else "",
+    seasons_json=json.dumps(seasons, sort_keys=True) if seasons else "",
 )
 missing_recommendation_rows = (
     _expected_recommendation_rows(hotel_data.current_prices, observation_date, horizon_days)
