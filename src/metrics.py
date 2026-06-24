@@ -131,6 +131,50 @@ def calculate_pickup(bookings: pd.DataFrame, observation_date=None) -> pd.DataFr
     return pickup.fillna(0)
 
 
+def calculate_historical_pickup_baseline(bookings: pd.DataFrame, observation_date) -> pd.DataFrame:
+    """Compute median pickup_14d per (hotel_id, room_type, is_weekend) from historical stay dates.
+
+    For each historical stay date (before observation_date), counts rooms booked within
+    14 days before that stay date. Returns median across same hotel/room_type/weekend group.
+    """
+    if bookings.empty:
+        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d"])
+
+    b = bookings.copy()
+    b["booking_date"] = pd.to_datetime(b["booking_date"]).dt.normalize()
+    b["check_in_date"] = pd.to_datetime(b["check_in_date"]).dt.normalize()
+    observation_date = pd.to_datetime(observation_date).normalize()
+
+    active = b["status"].astype(str).str.lower().isin(ACTIVE_STATUSES)
+    historical = b["check_in_date"] < observation_date
+    mask = active & historical
+    if not mask.any():
+        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d"])
+
+    h = b.loc[mask].copy()
+    h["days_before"] = (h["check_in_date"] - h["booking_date"]).dt.days
+    h14 = h[h["days_before"].between(0, 14)].copy()
+    if h14.empty:
+        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d"])
+
+    h14 = h14.copy()
+    h14["nights"] = pd.to_numeric(h14.get("nights", 1), errors="coerce").fillna(1).clip(lower=1, upper=365).astype(int)
+    rep = h14.loc[h14.index.repeat(h14["nights"])].copy()
+    rep["_offset"] = rep.groupby(level=0).cumcount()
+    rep["stay_date"] = (rep["check_in_date"] + pd.to_timedelta(rep["_offset"], unit="D")).dt.normalize()
+
+    per_date = (
+        rep.groupby(["hotel_id", "room_type", "stay_date"], as_index=False)
+        .agg(hist_pickup_14d=("rooms", "sum"))
+    )
+    per_date["is_weekend"] = pd.to_datetime(per_date["stay_date"]).dt.weekday >= 5
+
+    return (
+        per_date.groupby(["hotel_id", "room_type", "is_weekend"], as_index=False)
+        .agg(baseline_pickup_14d=("hist_pickup_14d", "median"))
+    )
+
+
 def summarize_overview(metrics: pd.DataFrame) -> dict[str, float]:
     room_revenue = float(metrics["room_revenue"].sum())
     sold_rooms = float(metrics["sold_rooms"].sum())
