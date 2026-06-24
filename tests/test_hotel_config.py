@@ -176,3 +176,31 @@ def test_get_season_multiplier_low_overlaps_high_takes_max():
     m, name = get_season_multiplier(date(2026, 11, 12), seasons)
     assert m == pytest.approx(1.5)
     assert name == "特殊活动"
+
+
+def test_normalize_seasons_name_too_long_raises():
+    long_name = "A" * 41
+    with pytest.raises(ValueError, match="40 characters"):
+        normalize_hotel_config({"seasons": [
+            {"name": long_name, "start": "2026-10-01", "end": "2026-10-07", "demand_multiplier": 1.5}
+        ]})
+
+
+def test_normalize_seasons_bad_end_date_raises():
+    with pytest.raises(ValueError, match="invalid date"):
+        normalize_hotel_config({"seasons": [
+            {"name": "X", "start": "2026-10-01", "end": "not-a-date", "demand_multiplier": 1.5}
+        ]})
+
+
+def test_normalize_seasons_valid_fields_preserved():
+    config = normalize_hotel_config({
+        "seasons": [
+            {"name": "国庆", "start": "2026-10-01", "end": "2026-10-07", "demand_multiplier": 2.0},
+        ]
+    })
+    s = config["seasons"][0]
+    assert s["name"] == "国庆"
+    assert s["start"] == "2026-10-01"
+    assert s["end"] == "2026-10-07"
+    assert s["demand_multiplier"] == pytest.approx(2.0)

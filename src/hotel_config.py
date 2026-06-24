@@ -263,7 +263,7 @@ def room_bounds_from_config(config: dict[str, Any]) -> dict[str, dict[str, float
     return {room["room_type"]: {"min_price": float(room.get("min_price", 0) or 0), "max_price": float(room.get("max_price", 0) or 0), "base_price": float(room.get("base_price", 0) or 0)} for room in config.get("room_types", []) if room.get("enabled", True)}
 
 
-def get_season_multiplier(stay_date: _date, seasons: list[dict]) -> tuple[float, str]:
+def get_season_multiplier(stay_date: _date, seasons: list[dict[str, Any]]) -> tuple[float, str]:
     """Return (highest demand_multiplier, season_name) for stay_date, or (1.0, '') if no match.
 
     When multiple seasons overlap, returns the highest multiplier (peak-season-wins rule).
