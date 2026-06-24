@@ -313,6 +313,57 @@ def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, A
         current_language = config.get("default_language", "zh")
         config["default_language"] = c2.selectbox(t("language", lang), list(LANGUAGES.keys()), format_func=lambda code: LANGUAGES[code], index=list(LANGUAGES.keys()).index(current_language) if current_language in LANGUAGES else 0)
 
+    with st.expander(t("seasons_config", lang), expanded=False):
+        st.caption(t("seasons_intro", lang))
+        seasons = config.get("seasons", [])
+        season_rows = [
+            {
+                "name": s.get("name", ""),
+                "start": s.get("start", ""),
+                "end": s.get("end", ""),
+                "demand_multiplier": float(s.get("demand_multiplier", 1.0)),
+            }
+            for s in seasons
+        ]
+        season_df = pd.DataFrame(season_rows) if season_rows else pd.DataFrame(
+            columns=["name", "start", "end", "demand_multiplier"]
+        )
+        edited_seasons = st.data_editor(
+            season_df,
+            num_rows="dynamic",
+            hide_index=True,
+            column_config={
+                "name": st.column_config.TextColumn(t("season_name", lang), max_chars=40),
+                "start": st.column_config.TextColumn(t("season_start", lang), help="YYYY-MM-DD"),
+                "end": st.column_config.TextColumn(t("season_end", lang), help="YYYY-MM-DD"),
+                "demand_multiplier": st.column_config.NumberColumn(
+                    t("season_multiplier", lang),
+                    min_value=0.1,
+                    max_value=5.0,
+                    step=0.1,
+                    format="%.2f",
+                    help="1.0 = 无调整，2.0 = 需求翻倍，0.5 = 需求减半",
+                ),
+            },
+            key="seasons_editor",
+        )
+        try:
+            new_seasons = []
+            for _, row in edited_seasons.iterrows():
+                name = str(row.get("name", "")).strip()
+                if not name:
+                    continue
+                new_seasons.append({
+                    "name": name,
+                    "start": str(row.get("start", "")),
+                    "end": str(row.get("end", "")),
+                    "demand_multiplier": float(row.get("demand_multiplier", 1.0)),
+                })
+            normalize_hotel_config({"seasons": new_seasons})
+            config["seasons"] = new_seasons
+        except ValueError as exc:
+            st.error(str(exc))
+
     st.subheader(label("room_config", lang))
     room_df = room_config_dataframe(config, lang)
     edited = st.data_editor(
