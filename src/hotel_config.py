@@ -267,8 +267,9 @@ def get_season_multiplier(stay_date: _date, seasons: list[dict]) -> tuple[float,
     """Return (highest demand_multiplier, season_name) for stay_date, or (1.0, '') if no match.
 
     When multiple seasons overlap, returns the highest multiplier (peak-season-wins rule).
+    Low-season multipliers (< 1.0) are correctly returned when no higher match exists.
     """
-    best_multiplier: float = 1.0
+    best_multiplier: float | None = None
     best_name: str = ""
     for season in seasons:
         try:
@@ -278,10 +279,10 @@ def get_season_multiplier(stay_date: _date, seasons: list[dict]) -> tuple[float,
             continue
         if s_start <= stay_date <= s_end:
             m = float(season.get("demand_multiplier", 1.0))
-            if m > best_multiplier:
+            if best_multiplier is None or m > best_multiplier:
                 best_multiplier = m
                 best_name = str(season.get("name", ""))
-    return best_multiplier, best_name
+    return (best_multiplier, best_name) if best_multiplier is not None else (1.0, "")
 
 
 def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, Any]:

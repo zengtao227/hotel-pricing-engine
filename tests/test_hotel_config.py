@@ -157,3 +157,22 @@ def test_get_season_multiplier_empty_seasons():
     m, name = get_season_multiplier(date(2026, 10, 3), [])
     assert m == 1.0
     assert name == ""
+
+
+def test_get_season_multiplier_low_season():
+    """淡季（multiplier < 1.0）必须正确返回，不能被 1.0 默认值覆盖。"""
+    seasons = [{"name": "11月淡季", "start": "2026-11-01", "end": "2026-11-30", "demand_multiplier": 0.6}]
+    m, name = get_season_multiplier(date(2026, 11, 15), seasons)
+    assert m == pytest.approx(0.6)
+    assert name == "11月淡季"
+
+
+def test_get_season_multiplier_low_overlaps_high_takes_max():
+    """淡季和旺季重叠，应返回旺季（较高的 multiplier）。"""
+    seasons = [
+        {"name": "11月淡季", "start": "2026-11-01", "end": "2026-11-30", "demand_multiplier": 0.6},
+        {"name": "特殊活动", "start": "2026-11-10", "end": "2026-11-15", "demand_multiplier": 1.5},
+    ]
+    m, name = get_season_multiplier(date(2026, 11, 12), seasons)
+    assert m == pytest.approx(1.5)
+    assert name == "特殊活动"
