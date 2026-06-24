@@ -79,6 +79,48 @@ TRANSLATIONS = {
     "column_pickup_14d": {"zh": "14天新增预订", "en": "14-day Pickup", "de": "14-Tage-Pickup", "fr": "Pickup 14 jours"},
     "column_main_reasons": {"zh": "主要原因", "en": "Main Reasons", "de": "Hauptgründe", "fr": "Raisons principales"},
     "column_risk_flags": {"zh": "风险提示", "en": "Risk Flags", "de": "Risikohinweise", "fr": "Alertes de risque"},
+    "season_peak_reason": {
+        "zh": "入住日期在旺季（{name}），需求预期高于历史均值",
+        "en": "stay date falls in peak season ({name}), demand above historical average",
+        "de": "Aufenthaltsdatum liegt in der Hochsaison ({name}), Nachfrage über historischem Durchschnitt",
+        "fr": "la date de séjour est en haute saison ({name}), demande supérieure à la moyenne historique",
+    },
+    "season_low_reason": {
+        "zh": "入住日期在淡季（{name}），需求预期低于历史均值",
+        "en": "stay date falls in low season ({name}), demand below historical average",
+        "de": "Aufenthaltsdatum liegt in der Nebensaison ({name}), Nachfrage unter historischem Durchschnitt",
+        "fr": "la date de séjour est en basse saison ({name}), demande inférieure à la moyenne historique",
+    },
+    "pickup_velocity_high": {
+        "zh": "近期预订速度高于历史同期（{ratio:.0%}）",
+        "en": "recent booking pace above historical average ({ratio:.0%})",
+        "de": "aktuelles Buchungstempo über historischem Durchschnitt ({ratio:.0%})",
+        "fr": "rythme de réservation récent supérieur à la moyenne historique ({ratio:.0%})",
+    },
+    "pickup_velocity_low": {
+        "zh": "近期预订速度低于历史同期（{ratio:.0%}）",
+        "en": "recent booking pace below historical average ({ratio:.0%})",
+        "de": "aktuelles Buchungstempo unter historischem Durchschnitt ({ratio:.0%})",
+        "fr": "rythme de réservation récent inférieur à la moyenne historique ({ratio:.0%})",
+    },
+    "seasons_config": {
+        "zh": "季节日历",
+        "en": "Season Calendar",
+        "de": "Saisonkalender",
+        "fr": "Calendrier des saisons",
+    },
+    "seasons_intro": {
+        "zh": "配置旺季和淡季的需求倍率。入住日期匹配时，基准需求会按倍率调整。多段重叠时取最高倍率。",
+        "en": "Configure demand multipliers for peak and low seasons. When a stay date matches, the baseline demand is scaled accordingly. Highest multiplier wins when ranges overlap.",
+        "de": "Nachfragemultiplikatoren für Hoch- und Nebensaisons konfigurieren. Bei Überschneidungen gilt der höchste Multiplikator.",
+        "fr": "Configurez les multiplicateurs de demande pour les hautes et basses saisons. En cas de chevauchement, le multiplicateur le plus élevé s'applique.",
+    },
+    "season_name": {"zh": "季节名称", "en": "Season name", "de": "Saisonname", "fr": "Nom de la saison"},
+    "season_start": {"zh": "开始日期", "en": "Start date", "de": "Startdatum", "fr": "Date de début"},
+    "season_end": {"zh": "结束日期", "en": "End date", "de": "Enddatum", "fr": "Date de fin"},
+    "season_multiplier": {"zh": "需求倍率", "en": "Demand multiplier", "de": "Nachfragemultiplikator", "fr": "Multiplicateur de demande"},
+    "season_add": {"zh": "添加季节段", "en": "Add season", "de": "Saison hinzufügen", "fr": "Ajouter une saison"},
+    "season_save": {"zh": "保存季节配置", "en": "Save seasons", "de": "Saisons speichern", "fr": "Enregistrer les saisons"},
 }
 
 ROOM_TYPES = {
