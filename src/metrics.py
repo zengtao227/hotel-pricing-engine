@@ -138,7 +138,7 @@ def calculate_historical_pickup_baseline(bookings: pd.DataFrame, observation_dat
     14 days before that stay date. Returns median across same hotel/room_type/weekend group.
     """
     if bookings.empty:
-        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d"])
+        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d", "baseline_sample_count"])
 
     b = bookings.copy()
     b["booking_date"] = pd.to_datetime(b["booking_date"]).dt.normalize()
@@ -149,13 +149,13 @@ def calculate_historical_pickup_baseline(bookings: pd.DataFrame, observation_dat
     historical = b["check_in_date"] < observation_date
     mask = active & historical
     if not mask.any():
-        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d"])
+        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d", "baseline_sample_count"])
 
     h = b.loc[mask].copy()
     h["days_before"] = (h["check_in_date"] - h["booking_date"]).dt.days
     h14 = h[h["days_before"].between(0, 14)].copy()
     if h14.empty:
-        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d"])
+        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d", "baseline_sample_count"])
 
     h14["nights"] = pd.to_numeric(h14.get("nights", 1), errors="coerce").fillna(1).clip(lower=1, upper=365).astype(int)
     rep = h14.loc[h14.index.repeat(h14["nights"])].copy()
@@ -170,7 +170,10 @@ def calculate_historical_pickup_baseline(bookings: pd.DataFrame, observation_dat
 
     return (
         per_date.groupby(["hotel_id", "room_type", "is_weekend"], as_index=False)
-        .agg(baseline_pickup_14d=("hist_pickup_14d", "median"))
+        .agg(
+            baseline_pickup_14d=("hist_pickup_14d", "median"),
+            baseline_sample_count=("hist_pickup_14d", "count"),
+        )
     )
 
 

@@ -145,7 +145,48 @@ def test_calculate_historical_pickup_baseline_empty():
     ])
     result = calculate_historical_pickup_baseline(empty, pd.to_datetime("2026-03-01"))
     assert result.empty
-    assert list(result.columns) == ["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d"]
+    assert list(result.columns) == ["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d", "baseline_sample_count"]
+
+
+def test_calculate_historical_pickup_baseline_sample_count():
+    """baseline_sample_count 必须等于该分组内历史入住日期数量。"""
+    bookings = _make_historical_bookings_for_baseline()
+    result = calculate_historical_pickup_baseline(bookings, pd.to_datetime("2026-03-01"))
+    weekday_row = result[
+        (result["hotel_id"] == "H1") &
+        (result["room_type"] == "Standard Double") &
+        (~result["is_weekend"])
+    ]
+    assert weekday_row.iloc[0]["baseline_sample_count"] == 1  # only Jan 20 weekday
+    weekend_row = result[
+        (result["hotel_id"] == "H1") &
+        (result["room_type"] == "Standard Double") &
+        (result["is_weekend"])
+    ]
+    assert weekend_row.iloc[0]["baseline_sample_count"] == 2  # Jan 10 and Feb 15
+
+
+def test_calculate_historical_pickup_baseline_excludes_cancelled():
+    """14天窗口内的取消订单不应计入历史 pickup baseline。"""
+    observation = pd.Timestamp("2026-06-01")
+    bookings = pd.DataFrame({
+        "booking_id": ["B1", "B2"],
+        "hotel_id": ["H1", "H1"],
+        "room_type": ["Standard Double", "Standard Double"],
+        "booking_date": pd.to_datetime(["2026-05-20", "2026-05-20"]),
+        "check_in_date": pd.to_datetime(["2026-05-30", "2026-05-30"]),
+        "check_out_date": pd.to_datetime(["2026-05-31", "2026-05-31"]),
+        "nights": [1, 1],
+        "rooms": [3, 2],
+        "gross_room_revenue": [1200.0, 800.0],
+        "net_room_revenue": [1200.0, 800.0],
+        "daily_rate": [400.0, 400.0],
+        "channel": ["direct", "direct"],
+        "status": ["cancelled", "stayed"],
+    })
+    result = calculate_historical_pickup_baseline(bookings, observation)
+    assert len(result) == 1
+    assert result.iloc[0]["baseline_pickup_14d"] == pytest.approx(2.0)
 
 
 def test_calculate_historical_pickup_baseline_excludes_future_stays():

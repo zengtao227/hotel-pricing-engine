@@ -5,6 +5,7 @@ from typing import Any
 import pandas as pd
 
 from .hotel_config import get_season_multiplier
+from .i18n import t
 from .metrics import calculate_historical_pickup_baseline, calculate_pickup
 from .revenue_simulation import RevenueSimulationResult, simulate_revenue_maximizing_price
 
@@ -86,6 +87,7 @@ def generate_recommendations(
     price_rounding_strategy: str = "chinese_lucky",
     room_price_bounds: dict | None = None,
     seasons: list[dict[str, Any]] | None = None,
+    lang: str = "zh",
 ) -> pd.DataFrame:
     """Generate explainable revenue-maximizing price recommendations."""
     prices = current_prices.copy()
@@ -136,6 +138,7 @@ def generate_recommendations(
     recs["baseline_adr"] = recs["baseline_adr"].fillna(historical["adr"].median())
     recs["baseline_revpar"] = recs["baseline_revpar"].fillna(historical["revpar"].median())
     recs["baseline_pickup_14d"] = recs["baseline_pickup_14d"].fillna(0.0)
+    recs["baseline_sample_count"] = recs["baseline_sample_count"].fillna(0).astype(int)
 
     recommendations = []
     for row in recs.itertuples(index=False):
@@ -143,6 +146,7 @@ def generate_recommendations(
         occupancy = float(row.occupancy or 0)
         baseline_occupancy = float(row.baseline_occupancy or 0)
         baseline_pickup_14d = float(getattr(row, "baseline_pickup_14d", 0) or 0)
+        baseline_sample_count = int(getattr(row, "baseline_sample_count", 0) or 0)
         active_seasons: list[dict[str, Any]] = seasons or []
         season_multiplier, season_name = get_season_multiplier(row.stay_date.date(), active_seasons)
         pickup_14d = float(getattr(row, "pickup_14d", 0) or 0)
@@ -157,10 +161,10 @@ def generate_recommendations(
 
         if season_multiplier > 1.05:
             score += 1
-            reasons.append(f"入住日期在旺季（{season_name}），需求预期高于历史均值")
+            reasons.append(t("season_peak_reason", lang).format(name=season_name))
         elif season_multiplier < 0.95:
             score -= 1
-            reasons.append(f"入住日期在淡季（{season_name}），需求预期低于历史均值")
+            reasons.append(t("season_low_reason", lang).format(name=season_name))
 
         if row.is_weekend:
             score += 1
@@ -173,14 +177,14 @@ def generate_recommendations(
             score -= 2
             reasons.append("occupancy below similar historical dates")
 
-        if baseline_pickup_14d > 0:
+        if baseline_pickup_14d > 0 and baseline_sample_count >= 3:
             pickup_velocity_ratio = pickup_14d / baseline_pickup_14d
             if pickup_velocity_ratio >= 1.3:
                 score += 1
-                reasons.append(f"近期预订速度高于历史同期（{pickup_velocity_ratio:.0%}）")
+                reasons.append(t("pickup_velocity_high", lang).format(ratio=pickup_velocity_ratio))
             elif pickup_velocity_ratio <= 0.7:
                 score -= 1
-                reasons.append(f"近期预订速度低于历史同期（{pickup_velocity_ratio:.0%}）")
+                reasons.append(t("pickup_velocity_low", lang).format(ratio=pickup_velocity_ratio))
         else:
             if pickup_14d >= 4:
                 score += 1
