@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 from copy import deepcopy
+from datetime import date as _date
 from typing import Any
 
 import pandas as pd
@@ -28,6 +29,7 @@ DEFAULT_HOTEL_CONFIG: dict[str, Any] = {
         {"room_type": "Superior Double", "room_code": "SUP_DB", "base_price": 468.0, "min_price": 398.0, "max_price": 688.0, "weekend_uplift": 40.0, "enabled": True},
         {"room_type": "Family Room", "room_code": "FAM", "base_price": 588.0, "min_price": 488.0, "max_price": 888.0, "weekend_uplift": 40.0, "enabled": True},
     ],
+    "seasons": [],
 }
 
 MAX_CONFIG_UPLOAD_BYTES = 200_000
@@ -164,6 +166,40 @@ def normalize_hotel_config(config: dict[str, Any]) -> dict[str, Any]:
             }
         )
     normalized["room_types"] = rooms
+
+    raw_seasons = config.get("seasons", [])
+    if not isinstance(raw_seasons, list):
+        raise ValueError("Invalid hotel config: `seasons` must be a list")
+    if len(raw_seasons) > 50:
+        raise ValueError("Invalid hotel config: `seasons` exceeds 50 entries")
+
+    normalized_seasons: list[dict] = []
+    for season in raw_seasons:
+        if not isinstance(season, dict):
+            raise ValueError("Invalid hotel config: season entries must be objects")
+        name = str(season.get("name", "")).strip()
+        if not name:
+            raise ValueError("Invalid hotel config: each season needs a `name`")
+        if len(name) > 40:
+            raise ValueError("Invalid hotel config: season name exceeds 40 characters")
+        try:
+            s_start = _date.fromisoformat(str(season.get("start", "")))
+            s_end = _date.fromisoformat(str(season.get("end", "")))
+        except ValueError:
+            raise ValueError(f"Invalid hotel config: invalid date in season `{name}`")
+        if s_start > s_end:
+            raise ValueError(f"Invalid hotel config: start > end in season `{name}`")
+        multiplier = _finite_non_negative_float(season.get("demand_multiplier", 1.0), "demand_multiplier")
+        if multiplier < 0.1 or multiplier > 5.0:
+            raise ValueError(f"Invalid hotel config: demand_multiplier must be 0.1–5.0 in season `{name}`")
+        normalized_seasons.append({
+            "name": name,
+            "start": s_start.isoformat(),
+            "end": s_end.isoformat(),
+            "demand_multiplier": round(multiplier, 4),
+        })
+    normalized["seasons"] = normalized_seasons
+
     return normalized
 
 
@@ -225,6 +261,27 @@ def apply_config_to_current_prices(current_prices: pd.DataFrame, config: dict[st
 def room_bounds_from_config(config: dict[str, Any]) -> dict[str, dict[str, float]]:
     # Keyed by room_type only — same multi-hotel limitation as room_config_map.
     return {room["room_type"]: {"min_price": float(room.get("min_price", 0) or 0), "max_price": float(room.get("max_price", 0) or 0), "base_price": float(room.get("base_price", 0) or 0)} for room in config.get("room_types", []) if room.get("enabled", True)}
+
+
+def get_season_multiplier(stay_date: _date, seasons: list[dict]) -> tuple[float, str]:
+    """Return (highest demand_multiplier, season_name) for stay_date, or (1.0, '') if no match.
+
+    When multiple seasons overlap, returns the highest multiplier (peak-season-wins rule).
+    """
+    best_multiplier: float = 1.0
+    best_name: str = ""
+    for season in seasons:
+        try:
+            s_start = _date.fromisoformat(season["start"])
+            s_end = _date.fromisoformat(season["end"])
+        except (KeyError, ValueError):
+            continue
+        if s_start <= stay_date <= s_end:
+            m = float(season.get("demand_multiplier", 1.0))
+            if m > best_multiplier:
+                best_multiplier = m
+                best_name = str(season.get("name", ""))
+    return best_multiplier, best_name
 
 
 def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, Any]:

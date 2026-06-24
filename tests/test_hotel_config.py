@@ -4,7 +4,8 @@ import json
 
 import pytest
 
-from src.hotel_config import MAX_CONFIG_UPLOAD_BYTES, load_config_from_upload, normalize_hotel_config
+from src.hotel_config import MAX_CONFIG_UPLOAD_BYTES, get_season_multiplier, load_config_from_upload, normalize_hotel_config
+from datetime import date
 
 
 class _Upload:
@@ -85,3 +86,74 @@ def test_load_config_from_upload_normalizes_payload():
     payload = json.dumps({"room_types": [{"room_type": "Suite", "base_price": 300}]}).encode("utf-8")
     config = load_config_from_upload(_Upload(payload))
     assert config["room_types"][0]["room_type"] == "Suite"
+
+
+def test_normalize_seasons_valid():
+    config = normalize_hotel_config({
+        "seasons": [
+            {"name": "国庆", "start": "2026-10-01", "end": "2026-10-07", "demand_multiplier": 2.0},
+        ]
+    })
+    assert len(config["seasons"]) == 1
+    assert config["seasons"][0]["demand_multiplier"] == 2.0
+
+
+def test_normalize_seasons_invalid_date_raises():
+    with pytest.raises(ValueError, match="invalid date"):
+        normalize_hotel_config({"seasons": [
+            {"name": "X", "start": "bad-date", "end": "2026-10-07", "demand_multiplier": 1.5}
+        ]})
+
+
+def test_normalize_seasons_start_after_end_raises():
+    with pytest.raises(ValueError, match="start > end"):
+        normalize_hotel_config({"seasons": [
+            {"name": "X", "start": "2026-10-08", "end": "2026-10-01", "demand_multiplier": 1.5}
+        ]})
+
+
+def test_normalize_seasons_multiplier_out_of_range_raises():
+    with pytest.raises(ValueError, match="demand_multiplier"):
+        normalize_hotel_config({"seasons": [
+            {"name": "X", "start": "2026-10-01", "end": "2026-10-07", "demand_multiplier": 10.0}
+        ]})
+
+
+def test_normalize_seasons_empty_is_valid():
+    config = normalize_hotel_config({"seasons": []})
+    assert config["seasons"] == []
+
+
+def test_normalize_seasons_default_is_empty():
+    config = normalize_hotel_config({})
+    assert config["seasons"] == []
+
+
+def test_get_season_multiplier_match():
+    seasons = [{"name": "国庆", "start": "2026-10-01", "end": "2026-10-07", "demand_multiplier": 2.0}]
+    m, name = get_season_multiplier(date(2026, 10, 3), seasons)
+    assert m == 2.0
+    assert name == "国庆"
+
+
+def test_get_season_multiplier_no_match():
+    seasons = [{"name": "国庆", "start": "2026-10-01", "end": "2026-10-07", "demand_multiplier": 2.0}]
+    m, name = get_season_multiplier(date(2026, 9, 30), seasons)
+    assert m == 1.0
+    assert name == ""
+
+
+def test_get_season_multiplier_overlapping_takes_max():
+    seasons = [
+        {"name": "旺季A", "start": "2026-10-01", "end": "2026-10-07", "demand_multiplier": 1.8},
+        {"name": "旺季B", "start": "2026-10-03", "end": "2026-10-10", "demand_multiplier": 2.1},
+    ]
+    m, name = get_season_multiplier(date(2026, 10, 5), seasons)
+    assert m == 2.1
+    assert name == "旺季B"
+
+
+def test_get_season_multiplier_empty_seasons():
+    m, name = get_season_multiplier(date(2026, 10, 3), [])
+    assert m == 1.0
+    assert name == ""
