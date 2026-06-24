@@ -145,10 +145,6 @@ def generate_recommendations(
         baseline_pickup_14d = float(getattr(row, "baseline_pickup_14d", 0) or 0)
         active_seasons: list[dict[str, Any]] = seasons or []
         season_multiplier, season_name = get_season_multiplier(row.stay_date.date(), active_seasons)
-        # Apply season multiplier to baseline occupancy for demand forecasting.
-        # Only cap at the physical maximum of 1.0; removing the (occupancy + 0.11) cap
-        # ensures peak-season signal is preserved even when current occupancy is still low.
-        adjusted_baseline_occupancy = min(baseline_occupancy * season_multiplier, 1.0)
         pickup_14d = float(getattr(row, "pickup_14d", 0) or 0)
         sellable_rooms = float(getattr(row, "sellable_rooms", 0) or 0)
         sold_rooms = float(getattr(row, "sold_rooms", 0) or 0)
@@ -208,25 +204,19 @@ def generate_recommendations(
             risk_flags.append("limited historical baseline")
 
         bounded_current_price, min_price, max_price = _apply_price_bounds(current_price, row.room_type, room_price_bounds)
-        # During peak season the season multiplier signals higher expected demand, so
-        # we should not cut below the current price. Raise the effective price floor to
-        # current price (while still respecting any configured room-type floor above it).
-        effective_floor: float | None = min_price
-        if season_multiplier > 1.0:
-            effective_floor = max(bounded_current_price, min_price) if min_price is not None else bounded_current_price
         simulation: RevenueSimulationResult = simulate_revenue_maximizing_price(
             current_price=bounded_current_price,
             sellable_rooms=sellable_rooms,
             known_sold_rooms=sold_rooms,
             known_room_revenue=float(getattr(row, "room_revenue", 0) or 0),
             occupancy=occupancy,
-            baseline_occupancy=adjusted_baseline_occupancy,
+            baseline_occupancy=baseline_occupancy,
             pickup_14d=pickup_14d,
             days_to_arrival=days_to_arrival,
             is_weekend=bool(row.is_weekend),
             max_change_pct=max_change_pct,
             rounding_strategy=price_rounding_strategy,
-            price_floor=effective_floor,
+            price_floor=min_price,
             price_ceiling=max_price,
         )
         recommended_price = simulation.recommended_price
