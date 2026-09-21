@@ -37,7 +37,7 @@ updated_at: 2026-06-10
 
 ## 当前状态（2026-06-09）
 
-MVP 已可运行。Streamlit 应用部署在 Frankfurt VPS，通过 systemd 托管，并由 Caddy 反代提供 HTTPS 访问。
+MVP 已可运行。Streamlit 应用部署在一台 VPS 上，通过 systemd 托管，并由 Caddy 反代提供 HTTPS 访问。
 详细部署说明见 `docs/deployment.md`。
 
 访问地址：`https://hotel.zengsg.dpdns.org`

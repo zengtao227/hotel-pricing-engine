@@ -2,7 +2,7 @@
 
 ## 当前运行环境
 
-- **服务器**：Frankfurt VPS（89.168.80.38，Oracle Cloud ARM A1）
+- **服务器**：一台 VPS（Oracle Cloud ARM A1；IP 见你自己的服务器记录，本文用 `<服务器 IP>` 代替）
 - **项目路径**：`/data/projects/hotel-pricing-engine`
 - **访问地址**：`https://hotel.zengsg.dpdns.org`
 - **运行方式**：systemd 服务 `hotel-pricing-engine.service`
@@ -51,7 +51,7 @@ sudo systemctl enable hotel-pricing-engine
 
 ### 已规划子域名
 
-在 Cloudflare DNS 面板添加 A 记录，指向 89.168.80.38：
+在 Cloudflare DNS 面板添加 A 记录，指向 `<服务器 IP>`：
 
 | 子域名 | 用途 | 状态 |
 |--------|------|------|
@@ -63,7 +63,7 @@ sudo systemctl enable hotel-pricing-engine
 
 1. 登录 Cloudflare → 选择 `zengsg.dpdns.org`
 2. DNS → Records → Add record
-3. Type: A，Name: `hotel`，IPv4: `89.168.80.38`，Proxy: 建议开启（橙色云朵）
+3. Type: A，Name: `hotel`，IPv4: `<服务器 IP>`，Proxy: 建议开启（橙色云朵）
 4. 保存
 
 ## Caddy 配置
@@ -290,7 +290,7 @@ sudo systemctl reload caddy
 ### 1. 向中国大陆酒店演示时的限制
 
 **访问速度**：VPS 在法兰克福，中国大陆到欧洲的延迟约 200–300ms，页面加载会明显偏慢。正式商业演示建议迁移到：
-- Tokyo VPS（161.33.188.233，延迟更低）
+- 另一台地理位置离用户更近的 VPS（延迟更低）
 - 国内云服务器（阿里云/腾讯云）
 
 **数据合规**：酒店历史订单数据属于商业敏感数据。将真实数据上传到境外服务器，在国内合规层面存在顾虑（尤其规模较大的酒店）。建议：
@@ -347,7 +347,7 @@ sudo systemctl reload caddy
 为客户开一个独立部署，**不要复用当前的公开演示站**。
 独立部署的好处：公开演示站继续开放给其他潜在客户看，客户的真实数据完全隔离。
 
-在 Frankfurt VPS 上新建一个服务实例（以 `grand` 酒店为例）：
+在 VPS 上新建一个服务实例（以 `grand` 酒店为例）：
 
 ```bash
 # 1. 在同一台 VPS 上再克隆一份代码（或 symlink），端口改成 8502
@@ -374,7 +374,7 @@ sudo systemctl enable --now hotel-grand
 
 ### 第三步：配置 Caddy 子域名
 
-在 Cloudflare 为客户添加一条 A 记录（例如 `grand.zengsg.dpdns.org → 89.168.80.38`），  
+在 Cloudflare 为客户添加一条 A 记录（例如 `grand.zengsg.dpdns.org → <服务器 IP>`），  
 然后在 Caddyfile 添加：
 
 ```
