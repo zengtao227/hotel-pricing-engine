@@ -106,7 +106,7 @@ def render_sales_dashboard(
             bargap=0.2,
             yaxis=dict(autorange=True),
         )
-        st.plotly_chart(apply_plotly_theme(action_fig, ui_theme), width="stretch")
+        st.plotly_chart(apply_plotly_theme(action_fig, ui_theme))
 
     with right:
         st.subheader(t("revpar_trend", lang))
@@ -137,7 +137,7 @@ def render_sales_dashboard(
             xaxis_title=t("column_stay_date", lang),
             yaxis_title=t("revpar", lang),
         )
-        st.plotly_chart(apply_plotly_theme(trend_fig, ui_theme), width="stretch")
+        st.plotly_chart(apply_plotly_theme(trend_fig, ui_theme))
 
     st.subheader(t("top_opportunities", lang))
     has_risk = _has_risk_flags(recommendations["risk_flags"])

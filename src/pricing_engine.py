@@ -117,7 +117,9 @@ def generate_recommendations(
     if future.empty:
         return pd.DataFrame(columns=RECOMMENDATION_COLUMNS)
 
-    future[["sold_rooms", "room_revenue", "pickup_7d", "pickup_14d"]] = future[["sold_rooms", "room_revenue", "pickup_7d", "pickup_14d"]].fillna(0)
+    # Columns merged from an empty pickup frame arrive as object dtype; make them numeric before filling.
+    for column in ["sold_rooms", "room_revenue", "pickup_7d", "pickup_14d"]:
+        future[column] = pd.to_numeric(future[column], errors="coerce").fillna(0)
     future["occupancy"] = future["occupancy"].fillna(0)
 
     historical = m[m["stay_date"] < observation_date].copy()
@@ -137,8 +139,8 @@ def generate_recommendations(
     recs["baseline_occupancy"] = recs["baseline_occupancy"].fillna(historical["occupancy"].median())
     recs["baseline_adr"] = recs["baseline_adr"].fillna(historical["adr"].median())
     recs["baseline_revpar"] = recs["baseline_revpar"].fillna(historical["revpar"].median())
-    recs["baseline_pickup_14d"] = recs["baseline_pickup_14d"].fillna(0.0)
-    recs["baseline_sample_count"] = recs["baseline_sample_count"].fillna(0).astype(int)
+    recs["baseline_pickup_14d"] = pd.to_numeric(recs["baseline_pickup_14d"], errors="coerce").fillna(0.0)
+    recs["baseline_sample_count"] = pd.to_numeric(recs["baseline_sample_count"], errors="coerce").fillna(0).astype(int)
 
     recommendations = []
     for row in recs.itertuples(index=False):

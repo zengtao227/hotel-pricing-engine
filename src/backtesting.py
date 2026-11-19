@@ -460,7 +460,7 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
         yaxis_title=bt_label("axis_revenue_delta", lang),
         legend_title_text=bt_label("legend_revenue_metric", lang),
     )
-    st.plotly_chart(apply_plotly_theme(daily_fig, ui_theme), width="stretch")
+    st.plotly_chart(apply_plotly_theme(daily_fig, ui_theme))
 
     st.subheader(bt_label("curve", lang))
     curve_options = detail.copy()
@@ -505,7 +505,7 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
             xaxis_title=bt_label("axis_candidate_price", lang),
             yaxis_title=bt_label("axis_expected_revenue", lang),
         )
-        st.plotly_chart(apply_plotly_theme(curve_fig, ui_theme), width="stretch")
+        st.plotly_chart(apply_plotly_theme(curve_fig, ui_theme))
 
     st.subheader(bt_label("observed_section", lang))
     st.caption(bt_label("observed_intro", lang))
@@ -537,7 +537,7 @@ def render_backtesting(metrics, bookings, current_prices, lang, default_horizon_
             xaxis_title=bt_label("axis_observed_elasticity", lang),
             yaxis_title=bt_label("axis_pair_count", lang),
         )
-        st.plotly_chart(apply_plotly_theme(observed_fig, ui_theme), width="stretch")
+        st.plotly_chart(apply_plotly_theme(observed_fig, ui_theme))
 
     st.subheader(bt_label("static_section", lang))
     st.caption(bt_label("static_volume_note", lang))
