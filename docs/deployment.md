@@ -15,11 +15,28 @@
 当前启动命令：
 
 ```bash
-/usr/bin/python3 -m streamlit run app/streamlit_app.py \
+/data/projects/hotel-pricing-engine/.venv/bin/python3 -m streamlit run app/streamlit_app.py \
   --server.port 8501 \
   --server.address 127.0.0.1 \
   --server.headless true
 ```
+
+### Python 环境与依赖
+
+- 解释器：uv 安装的 CPython 3.12，位于 `/data/projects/hotel-python-runtime/`（不用系统自带的 Python 3.9：它装不上锁文件里的 pandas 3 / Streamlit 1.58）。
+- 虚拟环境：`/data/projects/hotel-pricing-engine/.venv`（`uv venv --relocatable --python 3.12` 创建）。
+- **依赖一律按 `requirements.lock` 安装**，保证线上和本地测试是同一套版本：
+
+```bash
+cd /data/projects/hotel-pricing-engine
+UV_PYTHON_INSTALL_DIR=/data/projects/hotel-python-runtime \
+  uv pip sync --python .venv/bin/python --only-binary :all: requirements.lock
+sudo systemctl restart hotel-pricing-engine
+```
+
+- SELinux（Enforcing）：解释器目录需标为 `bin_t`，否则 systemd 启动报 203/EXEC：
+  `sudo semanage fcontext -a -t bin_t "/data/projects/hotel-python-runtime(/.*)?" && sudo restorecon -Rv /data/projects/hotel-python-runtime`
+- 2026-11-19 从 Python 3.9 切换时的旧环境备份：`/data/projects/hotel-venv-py39-backup`。回滚：停服务 → 把当前 `.venv` 移走 → 把备份移回 `.venv` → 启动服务。
 
 常用操作：
 
