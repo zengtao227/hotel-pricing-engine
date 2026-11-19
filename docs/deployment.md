@@ -350,7 +350,7 @@ sudo systemctl reload caddy
 在 VPS 上新建一个服务实例（以 `grand` 酒店为例）：
 
 ```bash
-# 1. 在同一台 VPS 上再克隆一份代码（或 symlink），端口改成 8502
+# 1. 在同一台 VPS 上再克隆一份独立代码目录（不要 symlink：审计库在 <代码目录>/data/audit_logs），端口改成 8502
 sudo cp /etc/systemd/system/hotel-pricing-engine.service \
         /etc/systemd/system/hotel-grand.service
 
@@ -361,7 +361,7 @@ sudo nano /etc/systemd/system/hotel-grand.service
 `hotel-grand.service` 关键差异：
 ```ini
 [Service]
-WorkingDirectory=/data/projects/hotel-grand        # 或复用同一目录
+WorkingDirectory=/data/projects/hotel-grand        # 必须是独立目录，不能与演示站共用
 Environment=HOTEL_APP_PASSWORD=客户设定的密码
 ExecStart=/usr/bin/python3 -m streamlit run app/streamlit_app.py \
   --server.port 8502 --server.address 127.0.0.1 --server.headless true

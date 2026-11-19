@@ -321,7 +321,9 @@ def run_static_backtest(metrics, bookings, current_prices, observation_date, hor
     recs = recommendations.drop(columns=["occupancy"], errors="ignore")
     detail = recs.merge(_known_snapshot(as_of_metrics), how="left", on=["hotel_id", "room_type", "stay_date"])
 
-    realized = metrics.copy()
+    # The caller's `metrics` may itself be an as-of snapshot; "realized" must come
+    # from the full booking history, not from whatever snapshot was passed in.
+    realized = calculate_daily_metrics(bookings, _inventory_from_metrics(metrics))
     realized["stay_date"] = pd.to_datetime(realized["stay_date"]).dt.date
     realized = realized.rename(columns={"sold_rooms": "realized_sold_rooms", "occupancy": "realized_occupancy", "room_revenue": "realized_room_revenue"})
     detail = detail.merge(

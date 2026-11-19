@@ -111,3 +111,25 @@ def test_simulate_push_blocks_out_of_bounds_and_zero_prices():
     assert len(log_rows) == 2
     assert (log_rows["event"] == "push_blocked").all()
     assert (pushed["push_status"] != "pushed").all()
+
+
+def test_signature_changes_when_price_bounds_change():
+    from src.approval_workflow import approval_signature
+
+    recs = _recommendations()
+    tightened = recs.copy()
+    tightened["price_ceiling"] = 450.0
+    assert approval_signature(recs) != approval_signature(tightened)
+
+
+def test_bulk_accept_does_not_touch_pushed_rows():
+    from src.approval_workflow import accept_price_changes
+
+    table = build_approval_table(_recommendations())
+    table.at[0, "approved_price"] = 500.0
+    table.at[0, "approval_status"] = "approved"
+    pushed, _, _ = simulate_push(table, "zh")
+    assert pushed.at[0, "push_status"] == "pushed"
+
+    after = accept_price_changes(pushed)
+    assert after.at[0, "approved_price"] == 500.0

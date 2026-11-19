@@ -106,19 +106,20 @@ def calculate_pickup(bookings: pd.DataFrame, observation_date=None) -> pd.DataFr
     observation_date = pd.to_datetime(observation_date).normalize()
 
     active = b["status"].str.lower().isin(ACTIVE_STATUSES)
-    future = b["check_in_date"] >= observation_date
 
     def window(days: int) -> pd.DataFrame:
-        mask = active & future & (b["booking_date"] > observation_date - pd.Timedelta(days=days)) & (b["booking_date"] <= observation_date)
+        mask = active & (b["booking_date"] > observation_date - pd.Timedelta(days=days)) & (b["booking_date"] <= observation_date)
         windowed = b.loc[mask].copy()
-        if windowed.empty:
-            return pd.DataFrame(columns=["hotel_id", "room_type", "stay_date", f"pickup_{days}d"])
         # Expand each booking to all stay nights so multi-night bookings contribute
         # pickup credit to every night they occupy, not just check-in date.
         windowed["nights"] = pd.to_numeric(windowed.get("nights", 1), errors="coerce").fillna(1).clip(lower=1, upper=365).astype(int)
         rep = windowed.loc[windowed.index.repeat(windowed["nights"])].copy()
         rep["_offset"] = rep.groupby(level=0).cumcount()
         rep["stay_date"] = (rep["check_in_date"] + pd.to_timedelta(rep["_offset"], unit="D")).dt.normalize()
+        # Filter on the stay night, so in-house stays still count their remaining nights.
+        rep = rep[rep["stay_date"] >= observation_date]
+        if rep.empty:
+            return pd.DataFrame(columns=["hotel_id", "room_type", "stay_date", f"pickup_{days}d"])
         return (
             rep.groupby(["hotel_id", "room_type", "stay_date"], as_index=False)
             .agg(**{f"pickup_{days}d": ("rooms", "sum")})
@@ -146,21 +147,16 @@ def calculate_historical_pickup_baseline(bookings: pd.DataFrame, observation_dat
     observation_date = pd.to_datetime(observation_date).normalize()
 
     active = b["status"].astype(str).str.lower().isin(ACTIVE_STATUSES)
-    historical = b["check_in_date"] < observation_date
-    mask = active & historical
-    if not mask.any():
-        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d", "baseline_sample_count"])
-
-    h = b.loc[mask].copy()
-    h["days_before"] = (h["check_in_date"] - h["booking_date"]).dt.days
-    h14 = h[h["days_before"].between(0, 14)].copy()
-    if h14.empty:
-        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d", "baseline_sample_count"])
-
-    h14["nights"] = pd.to_numeric(h14.get("nights", 1), errors="coerce").fillna(1).clip(lower=1, upper=365).astype(int)
-    rep = h14.loc[h14.index.repeat(h14["nights"])].copy()
+    h = b.loc[active & (b["check_in_date"] < observation_date)].copy()
+    h["nights"] = pd.to_numeric(h.get("nights", 1), errors="coerce").fillna(1).clip(lower=1, upper=365).astype(int)
+    rep = h.loc[h.index.repeat(h["nights"])].copy()
     rep["_offset"] = rep.groupby(level=0).cumcount()
     rep["stay_date"] = (rep["check_in_date"] + pd.to_timedelta(rep["_offset"], unit="D")).dt.normalize()
+    # Per stay night: only past nights, booked within 14 days before that night.
+    days_before = (rep["stay_date"] - rep["booking_date"]).dt.days
+    rep = rep[(rep["stay_date"] < observation_date) & days_before.between(0, 14)]
+    if rep.empty:
+        return pd.DataFrame(columns=["hotel_id", "room_type", "is_weekend", "baseline_pickup_14d", "baseline_sample_count"])
 
     per_date = (
         rep.groupby(["hotel_id", "room_type", "stay_date"], as_index=False)

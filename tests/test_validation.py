@@ -223,3 +223,29 @@ class TestCrossTableConsistency:
         )
         errors = validate_cross_table_consistency(_bookings(nights=[1], check_out_date=pd.to_datetime(["2024-02-02"])), inv, _prices())
         assert not any("current_price date row" in e for e in errors)
+
+
+class TestValidateAllStructure:
+    def test_missing_columns_reported_not_raised(self):
+        from src.validation import validate_all
+
+        errors = validate_all(_bookings().drop(columns=["hotel_id"]), _inventory(), _prices().drop(columns=["current_price"]))
+        assert any("hotel_id" in e for e in errors)
+        assert any("current_price" in e for e in errors)
+
+    def test_duplicate_booking_id(self):
+        bookings = pd.concat([_bookings(), _bookings()], ignore_index=True)
+        assert any("duplicate booking_id" in e for e in validate_bookings(bookings))
+
+    def test_inventory_date_without_price_inside_range(self):
+        dates = pd.to_datetime(["2024-02-01", "2024-02-02", "2024-02-03"])
+        inventory = _inventory(
+            hotel_id=["H1"] * 3, room_type=["Standard Double"] * 3, stay_date=dates,
+            available_rooms=[10] * 3, out_of_order_rooms=[0] * 3,
+        )
+        prices = _prices(
+            hotel_id=["H1"] * 2, room_type=["Standard Double"] * 2,
+            stay_date=dates[[0, 2]], current_price=[400.0, 400.0],
+        )
+        errors = validate_cross_table_consistency(_bookings(), inventory, prices)
+        assert any("have no current_price" in e for e in errors)

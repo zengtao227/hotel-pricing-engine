@@ -166,8 +166,10 @@ def render_price_approval_publishing(
         edited_internal = from_editor_display(edited_display, lang)
         previous_table = st.session_state.approval_table.copy()
         approval_table = st.session_state.approval_table.copy()
+        # Pushed rows stay locked (same rule as the card view); undo the push to edit them.
+        editable = (approval_table["push_status"] != "pushed").values
         for column in ["selected", "approved_price", "approval_status", "review_comment"]:
-            approval_table[column] = edited_internal[column].values
+            approval_table.loc[editable, column] = edited_internal[column].values[editable]
         st.session_state.approval_table = update_manual_flags(approval_table)
         for event, rows in table_decision_events(previous_table, st.session_state.approval_table):
             st.session_state.approval_log = append_audit_log(

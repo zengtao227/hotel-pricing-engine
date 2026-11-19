@@ -101,6 +101,10 @@ def validate_bookings(bookings: pd.DataFrame) -> list[str]:
         if invalid_revenue.any():
             errors.append(f"bookings: {int(invalid_revenue.sum())} rows have invalid or negative {revenue_column}")
 
+    duplicated_ids = bookings["booking_id"].dropna().duplicated().sum()
+    if duplicated_ids:
+        errors.append(f"bookings: {int(duplicated_ids)} duplicate booking_id rows")
+
     return errors
 
 
@@ -227,6 +231,14 @@ def validate_cross_table_consistency(
         errors.append(
             f"inventory: {len(price_without_inventory_keys)} current_price date row(s) have no matching inventory"
         )
+    if price_keys:
+        price_min = min(key[2] for key in price_keys)
+        price_max = max(key[2] for key in price_keys)
+        inventory_without_price = {k for k in inventory_keys - price_keys if price_min <= k[2] <= price_max}
+        if inventory_without_price:
+            errors.append(
+                f"current_prices: {len(inventory_without_price)} inventory date row(s) inside the price date range have no current_price"
+            )
 
     # Overbooking check: aggregate confirmed bookings per check_in_date vs inventory
     _ACTIVE = {"confirmed", "stayed", "checked_in", "checked_out"}
@@ -279,9 +291,8 @@ def validate_cross_table_consistency(
 
 
 def validate_all(bookings: pd.DataFrame, inventory: pd.DataFrame, current_prices: pd.DataFrame) -> list[str]:
-    return (
-        validate_bookings(bookings)
-        + validate_inventory(inventory)
-        + validate_current_prices(current_prices)
-        + validate_cross_table_consistency(bookings, inventory, current_prices)
-    )
+    errors = validate_bookings(bookings) + validate_inventory(inventory) + validate_current_prices(current_prices)
+    if errors:
+        # Cross-table checks assume each table is structurally valid.
+        return errors
+    return validate_cross_table_consistency(bookings, inventory, current_prices)

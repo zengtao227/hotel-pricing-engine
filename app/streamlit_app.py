@@ -279,6 +279,18 @@ except Exception as exc:
     st.error(f"{t('load_error', lang)}: {exc}")
     st.stop()
 
+# Validate the raw upload before config prices overwrite current_price, so bad
+# source data (missing columns, invalid prices) is reported instead of masked.
+validation_errors = _cached_validate_all(hotel_data.bookings, hotel_data.inventory, hotel_data.current_prices)
+if validation_errors:
+    if use_demo:
+        st.error(t("demo_validation_failed", lang))
+    else:
+        st.error(t("validation_failed", lang))
+        for error in validation_errors:
+            st.write(f"- {error}")
+    st.stop()
+
 effective_current_prices = apply_config_to_current_prices(
     hotel_data.current_prices,
     hotel_config,
@@ -289,16 +301,6 @@ hotel_data = HotelData(
     inventory=hotel_data.inventory,
     current_prices=effective_current_prices,
 )
-
-validation_errors = _cached_validate_all(hotel_data.bookings, hotel_data.inventory, hotel_data.current_prices)
-if validation_errors:
-    if use_demo:
-        st.error(t("demo_validation_failed", lang))
-    else:
-        st.error(t("validation_failed", lang))
-        for error in validation_errors:
-            st.write(f"- {error}")
-    st.stop()
 
 observation_date = pd.to_datetime(hotel_data.current_prices["stay_date"]).min()
 # Only use bookings known at observation_date — mirrors the backtest as-of discipline.

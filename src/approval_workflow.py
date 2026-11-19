@@ -115,14 +115,17 @@ def build_approval_table(recommendations: pd.DataFrame) -> pd.DataFrame:
 
 
 def approval_signature(recommendations: pd.DataFrame) -> str:
+    # Floor/ceiling are part of the signature so a price-rule change invalidates
+    # drafts that still carry the old bounds used by push-time validation.
     cols = ["stay_date", "hotel_id", "room_type", "current_price", "recommended_price"]
+    cols += [c for c in ["price_floor", "price_ceiling"] if c in recommendations.columns]
     content = recommendations[cols].astype(str).to_csv(index=False)
     return sha256(content.encode()).hexdigest()[:16]
 
 
 def accept_price_changes(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
-    mask = out["action"] != "hold"
+    mask = (out["action"] != "hold") & (out["push_status"] != "pushed")
     out.loc[mask, "selected"] = True
     out.loc[mask, "approval_status"] = "approved"
     out.loc[mask, "approved_price"] = out.loc[mask, "recommended_price"]

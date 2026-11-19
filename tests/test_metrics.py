@@ -201,3 +201,20 @@ def test_calculate_historical_pickup_baseline_excludes_future_stays():
         (~result["is_weekend"])
     ]
     assert len(row_weekday) == 0  # 没有历史 weekday 数据
+
+
+def test_pickup_counts_remaining_nights_of_in_house_stay():
+    bookings = pd.DataFrame([
+        _booking(booking_date="2026-02-15", check_in_date="2026-02-19", check_out_date="2026-02-22", nights=3),
+    ])
+    pickup = calculate_pickup(bookings, observation_date="2026-02-20")
+    stay_dates = set(pd.to_datetime(pickup["stay_date"]).dt.strftime("%Y-%m-%d"))
+    assert stay_dates == {"2026-02-20", "2026-02-21"}
+
+
+def test_historical_pickup_baseline_excludes_nights_on_or_after_observation():
+    bookings = pd.DataFrame([
+        _booking(booking_date="2026-02-15", check_in_date="2026-02-19", check_out_date="2026-02-22", nights=3),
+    ])
+    baseline = calculate_historical_pickup_baseline(bookings, "2026-02-20")
+    assert int(baseline["baseline_sample_count"].sum()) == 1
