@@ -379,7 +379,8 @@ sudo nano /etc/systemd/system/hotel-grand.service
 `hotel-grand.service` 关键差异：
 ```ini
 [Service]
-WorkingDirectory=/data/projects/hotel-grand        # 必须是独立目录，不能与演示站共用
+# 必须是独立目录，不能与演示站共用
+WorkingDirectory=/data/projects/hotel-grand
 Environment=HOTEL_APP_PASSWORD=客户设定的密码
 ExecStart=/data/projects/hotel-grand/.venv/bin/python -m streamlit run app/streamlit_app.py \
   --server.port 8502 --server.address 127.0.0.1 --server.headless true
