@@ -207,9 +207,11 @@ def generate_recommendations(
         if pd.isna(row.baseline_adr):
             risk_flags.append("limited historical baseline")
 
-        bounded_current_price, min_price, max_price = _apply_price_bounds(current_price, row.room_type, room_price_bounds)
+        # The real current price is the change/revenue baseline; the simulation
+        # itself snaps out-of-bounds prices to the floor/ceiling.
+        _, min_price, max_price = _apply_price_bounds(current_price, row.room_type, room_price_bounds)
         simulation: RevenueSimulationResult = simulate_revenue_maximizing_price(
-            current_price=bounded_current_price,
+            current_price=current_price,
             sellable_rooms=sellable_rooms,
             known_sold_rooms=sold_rooms,
             known_room_revenue=float(getattr(row, "room_revenue", 0) or 0),

@@ -225,6 +225,11 @@ with st.sidebar:
     st.header(t("configuration", lang))
     st.subheader(t("data", lang))
     use_demo = st.toggle(t("use_demo_data", lang), value=True)
+    if st.session_state.get("_last_use_demo") != use_demo:
+        # Uploaded data keeps the hotel's own current prices unless the user opts
+        # in to configured prices; the demo keeps showing configured prices.
+        hotel_config["apply_configured_prices"] = use_demo
+        st.session_state._last_use_demo = use_demo
 
     bookings_file = inventory_file = current_prices_file = None
     if not use_demo:

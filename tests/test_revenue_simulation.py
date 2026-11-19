@@ -102,3 +102,29 @@ def test_candidate_prices_respect_floor_ceiling_and_include_current():
     assert min(candidates) >= 90.0 - 0.01
     assert max(candidates) <= 110.0 + 0.01
     assert 100.0 in candidates
+
+
+def _below_floor_kwargs(**overrides):
+    base = dict(
+        current_price=400.0, sellable_rooms=20, known_sold_rooms=18, known_room_revenue=7000,
+        occupancy=0.9, baseline_occupancy=0.6, pickup_14d=8, days_to_arrival=10, is_weekend=True,
+        max_change_pct=0.15, rounding_strategy="chinese_lucky", price_floor=500.0, price_ceiling=900.0,
+    )
+    base.update(overrides)
+    return base
+
+
+def test_current_below_floor_snaps_to_floor_without_extra_uplift():
+    from src.revenue_simulation import simulate_revenue_maximizing_price
+
+    result = simulate_revenue_maximizing_price(**_below_floor_kwargs())
+    assert result.recommended_price == 500.0
+
+
+def test_current_below_floor_never_returned_even_with_weak_demand():
+    from src.revenue_simulation import simulate_revenue_maximizing_price
+
+    result = simulate_revenue_maximizing_price(
+        **_below_floor_kwargs(known_sold_rooms=2, occupancy=0.1, pickup_14d=0, days_to_arrival=3, is_weekend=False)
+    )
+    assert result.recommended_price == 500.0

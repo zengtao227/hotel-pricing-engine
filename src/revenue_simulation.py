@@ -338,8 +338,12 @@ def simulate_revenue_maximizing_price(
         price_ceiling=price_ceiling,
     )
 
+    lower, upper = _price_range(price, max_change_pct, price_floor, price_ceiling)
+    current_price_allowed: bool = _is_price_allowed(price, lower, upper)
     best_price: float = price
-    best_revenue: float = current_expected_revenue
+    # An out-of-bounds current price (e.g. below a raised floor) is only the
+    # revenue baseline; it must never win over an allowed candidate.
+    best_revenue: float = current_expected_revenue if current_price_allowed else -math.inf
     best_new_sold: float = current_expected_new_sold
     for candidate_price in candidates:
         candidate_revenue, candidate_new_sold = _expected_revenue(
@@ -357,9 +361,7 @@ def simulate_revenue_maximizing_price(
             best_revenue = candidate_revenue
             best_new_sold = candidate_new_sold
 
-    lower, upper = _price_range(price, max_change_pct, price_floor, price_ceiling)
     minimum_uplift: float = max(abs(current_expected_revenue) * MIN_REVENUE_UPLIFT_PCT, 0.01)
-    current_price_allowed: bool = _is_price_allowed(price, lower, upper)
     if current_price_allowed and best_revenue - current_expected_revenue < minimum_uplift:
         best_price = price
         best_revenue = current_expected_revenue
