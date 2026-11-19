@@ -390,7 +390,10 @@ def render_hotel_configuration(config: dict[str, Any], lang: str) -> dict[str, A
         st.session_state.hotel_config = config
         st.success(label("applied", lang))
     if c2.button(label("reset_default", lang), width="stretch"):
-        st.session_state.hotel_config = default_hotel_config()
+        reset_config = default_hotel_config()
+        # Keep the data-mode default: uploaded data keeps its own current prices.
+        reset_config["apply_configured_prices"] = bool(st.session_state.get("_last_use_demo", True))
+        st.session_state.hotel_config = reset_config
         st.success(label("reset_done", lang))
         config = st.session_state.hotel_config
     c3.download_button(label("download_json", lang), data=config_to_json_bytes(config), file_name="hotel_config.json", mime="application/json", width="stretch")

@@ -23,6 +23,7 @@ from src.approval_workflow import (
     editor_column_config,
     from_editor_display,
     render_approval_cards,
+    reset_approval_table,
     reset_log_row,
     simulate_push,
     styled_preview,
@@ -134,7 +135,7 @@ def render_price_approval_publishing(
     )
 
     if view_mode == view_card:
-        render_approval_cards(recommendations, lang, actor=actor, audit_dir=audit_log_dir)
+        render_approval_cards(lang, actor=actor, audit_dir=audit_log_dir)
     else:
         c1, c2 = st.columns([0.35, 0.65])
         with c1:
@@ -147,7 +148,7 @@ def render_price_approval_publishing(
         with c2:
             if st.button(alabel("reset", lang), width="stretch"):
                 row_count = len(st.session_state.approval_table)
-                st.session_state.approval_table = build_approval_table(recommendations)
+                st.session_state.approval_table = reset_approval_table(st.session_state.approval_table)
                 st.session_state.approval_log = append_audit_log(
                     reset_log_row(actor, row_count), audit_log_dir
                 )

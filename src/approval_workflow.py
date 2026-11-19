@@ -114,6 +114,15 @@ def build_approval_table(recommendations: pd.DataFrame) -> pd.DataFrame:
     return df[DISPLAY_COLUMNS + extra_cols].copy()
 
 
+def reset_approval_table(df: pd.DataFrame) -> pd.DataFrame:
+    """Reset review decisions. Pushed rows keep their state so they cannot be
+    pushed twice; use undo to change them."""
+    fresh = build_approval_table(df)
+    pushed = (df["push_status"] == "pushed").values
+    fresh.loc[pushed, :] = df.loc[pushed, fresh.columns].values
+    return fresh
+
+
 def approval_signature(recommendations: pd.DataFrame) -> str:
     # Floor/ceiling are part of the signature so a price-rule change invalidates
     # drafts that still carry the old bounds used by push-time validation.
@@ -351,7 +360,7 @@ def _log_decision(rows: pd.DataFrame, event: str, actor: str, audit_dir) -> None
     st.session_state.approval_log = append_audit_log(decision_log_rows(rows, event, actor), audit_dir)
 
 
-def render_approval_cards(recommendations: pd.DataFrame, lang: str, actor: str = "demo_user", audit_dir="data/audit_logs") -> None:
+def render_approval_cards(lang: str,actor: str = "demo_user", audit_dir="data/audit_logs") -> None:
     """Mobile-friendly card view: one expander per price action item."""
     df: pd.DataFrame = st.session_state.approval_table
 
@@ -365,7 +374,7 @@ def render_approval_cards(recommendations: pd.DataFrame, lang: str, actor: str =
     with col_reset:
         if st.button(alabel("reset", lang), key="card_reset", width="stretch"):
             row_count = len(st.session_state.approval_table)
-            st.session_state.approval_table = build_approval_table(recommendations)
+            st.session_state.approval_table = reset_approval_table(st.session_state.approval_table)
             st.session_state.approval_log = append_audit_log(reset_log_row(actor, row_count), audit_dir)
             st.rerun()
 

@@ -133,3 +133,17 @@ def test_bulk_accept_does_not_touch_pushed_rows():
 
     after = accept_price_changes(pushed)
     assert after.at[0, "approved_price"] == 500.0
+
+
+def test_reset_keeps_pushed_rows_so_they_cannot_be_pushed_again():
+    from src.approval_workflow import accept_price_changes, reset_approval_table
+
+    pushed, _, _ = simulate_push(accept_price_changes(build_approval_table(_recommendations())), "zh")
+    assert pushed.at[0, "push_status"] == "pushed"
+
+    reset = reset_approval_table(pushed)
+    assert reset.at[0, "push_status"] == "pushed"
+    assert reset.at[0, "pushed_at"] == pushed.at[0, "pushed_at"]
+
+    _, log_rows, _ = simulate_push(accept_price_changes(reset), "zh")
+    assert "push" not in set(log_rows.get("event", []))
